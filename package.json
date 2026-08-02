@@ -6,8 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "lint": "npm run lint --workspaces --if-present",
-    "type-check": "npm run type-check --workspaces --if-present",
+    "lint": "npx --yes eslint@8.57.0 . && npx --yes prettier@3.6.2 --check . && npm run lint --workspaces --if-present",
+    "type-check": "npx --yes -p typescript@5.9.2 tsc --noEmit -p tsconfig.json && npm run type-check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present"
   }

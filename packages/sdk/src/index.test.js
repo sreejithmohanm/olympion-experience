@@ -28,7 +28,10 @@ test('createExperienceSdk merges default and custom config while preserving sdk 
   };
 
   const sdk = loadSdkWithMock(mockSdk);
-  const wrapped = sdk.createExperienceSdk({ environment: 'staging', region: 'us-east-1' });
+  const wrapped = sdk.createExperienceSdk({
+    environment: 'staging',
+    region: 'us-east-1'
+  });
 
   assert.equal(typeof wrapped.ping, 'function');
   assert.equal(wrapped.ping(), 'pong');
