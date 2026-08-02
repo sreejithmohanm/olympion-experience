@@ -53,3 +53,41 @@ test('createExperienceSdk uses production as default environment', () => {
     environment: 'production'
   });
 });
+
+test('SDK client exposes employees.list() method that is callable', async () => {
+  const mockEmployees = [
+    { id: '1', name: 'Alice', email: 'alice@example.com' },
+    { id: '2', name: 'Bob', email: 'bob@example.com' }
+  ];
+  const mockSdk = {
+    employees: {
+      list: async (_params) => ({ data: mockEmployees, total: mockEmployees.length })
+    }
+  };
+
+  const sdk = loadSdkWithMock(mockSdk);
+  const client = sdk.createExperienceSdk({ environment: 'test' });
+
+  assert.equal(typeof client.employees.list, 'function');
+  const result = await client.employees.list();
+  assert.equal(result.total, 2);
+  assert.deepEqual(result.data, mockEmployees);
+});
+
+test('SDK client employees.list() forwards optional params to the underlying SDK', async () => {
+  let capturedParams;
+  const mockSdk = {
+    employees: {
+      list: async (params) => {
+        capturedParams = params;
+        return { data: [], total: 0 };
+      }
+    }
+  };
+
+  const sdk = loadSdkWithMock(mockSdk);
+  const client = sdk.createExperienceSdk();
+
+  await client.employees.list({ page: 2, pageSize: 10 });
+  assert.deepEqual(capturedParams, { page: 2, pageSize: 10 });
+});
