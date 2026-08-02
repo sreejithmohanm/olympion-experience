@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "@olympion/workforce-console": ["apps/workforce-console/src"],
+      "@olympion/experience-sdk": ["packages/sdk/src"],
+      "@olympion/experience-shared-types": ["packages/shared-types/src"],
+      "@olympion/design-system": ["packages/design-system/src"],
+      "@olympion/ui-components": ["packages/ui-components/src"]
+    }
+  },
+  "include": [
+    "apps/**/*.ts",
+    "apps/**/*.d.ts",
+    "packages/**/*.ts",
+    "packages/**/*.d.ts",
+    "types/**/*.d.ts"
+  ]
+}
