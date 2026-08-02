@@ -1,0 +1,17 @@
+{
+  "name": "@olympion/experience-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Experience wrapper helpers around Workforce OS SDK",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "dependencies": {
+    "@olympion/workforce-os-sdk": "*"
+  },
+  "scripts": {
+    "lint": "node --check src/index.js",
+    "type-check": "node --check src/index.js",
+    "test": "node --test",
+    "build": "node --check src/index.js"
+  }
+}
