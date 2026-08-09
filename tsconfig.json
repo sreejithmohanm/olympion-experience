@@ -6,6 +6,7 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
+      "@olympion/website": ["apps/website/src"],
       "@olympion/workforce-console": ["apps/workforce-console/src"],
       "@olympion/experience-sdk": ["packages/sdk/src"],
       "@olympion/experience-shared-types": ["packages/shared-types/src"],
