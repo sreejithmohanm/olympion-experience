@@ -59,12 +59,20 @@ test('createWorkItem generates unique ids across multiple assignments', () => {
 
 test('setEmployeeStatus updates busy/idle state and idle filtering', () => {
   const hired = hireEmployee([], EMPLOYEE_CATALOG[2]);
-  const busyEmployees = setEmployeeStatus(hired, EMPLOYEE_CATALOG[2].id, 'busy');
+  const busyEmployees = setEmployeeStatus(
+    hired,
+    EMPLOYEE_CATALOG[2].id,
+    'busy'
+  );
 
   assert.equal(busyEmployees[0].status, 'busy');
   assert.equal(getIdleEmployees(busyEmployees).length, 0);
 
-  const idleEmployees = setEmployeeStatus(busyEmployees, EMPLOYEE_CATALOG[2].id, 'idle');
+  const idleEmployees = setEmployeeStatus(
+    busyEmployees,
+    EMPLOYEE_CATALOG[2].id,
+    'idle'
+  );
   assert.equal(getIdleEmployees(idleEmployees).length, 1);
 });
 

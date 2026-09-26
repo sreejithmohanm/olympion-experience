@@ -8,5 +8,16 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 'latest',
     sourceType: 'commonjs'
-  }
+  },
+  overrides: [
+    {
+      files: ['apps/workforce-console/src/app/**/*.js'],
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true
+        },
+        sourceType: 'module'
+      }
+    }
+  ]
 };

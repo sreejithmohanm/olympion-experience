@@ -32,7 +32,9 @@ export default function WorkforceConsolePage() {
 
     const interval = setInterval(() => {
       setWorkItems((currentItems) => {
-        const itemToUpdate = currentItems.find((item) => item.id === activeWorkId);
+        const itemToUpdate = currentItems.find(
+          (item) => item.id === activeWorkId
+        );
         if (!itemToUpdate || itemToUpdate.status !== 'streaming') {
           return currentItems;
         }
@@ -168,9 +170,14 @@ export default function WorkforceConsolePage() {
   if (!isConnected) {
     return (
       <main>
-        <section className="panel" style={{ maxWidth: 520, margin: '48px auto' }}>
+        <section
+          className="panel"
+          style={{ maxWidth: 520, margin: '48px auto' }}
+        >
           <h1>Workforce Console</h1>
-          <p className="muted">Enter your API key to access your digital workforce.</p>
+          <p className="muted">
+            Enter your API key to access your digital workforce.
+          </p>
           <form className="stack" onSubmit={handleConnect}>
             <div>
               <label htmlFor="api-key">API key</label>
@@ -194,10 +201,15 @@ export default function WorkforceConsolePage() {
 
   return (
     <main className="grid" style={{ gap: 24 }}>
-      <section className="panel" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+      <section
+        className="panel"
+        style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}
+      >
         <div>
           <h1>Workforce Console</h1>
-          <p className="muted">Connected with API key ending in {apiKeySuffix}.</p>
+          <p className="muted">
+            Connected with API key ending in {apiKeySuffix}.
+          </p>
         </div>
         <button className="secondary" onClick={handleDisconnect} type="button">
           Disconnect
@@ -208,13 +220,19 @@ export default function WorkforceConsolePage() {
         <h2>Employee Catalog</h2>
         <div className="grid two">
           {EMPLOYEE_CATALOG.map((employee) => {
-            const isHired = hiredEmployees.some((current) => current.id === employee.id);
+            const isHired = hiredEmployees.some(
+              (current) => current.id === employee.id
+            );
 
             return (
               <article className="card" key={employee.id}>
                 <h3>{employee.name}</h3>
                 <p className="muted">{employee.specialty}</p>
-                <button disabled={isHired} onClick={() => handleHire(employee)} type="button">
+                <button
+                  disabled={isHired}
+                  onClick={() => handleHire(employee)}
+                  type="button"
+                >
                   {isHired ? 'Hired' : 'Hire'}
                 </button>
               </article>
@@ -285,7 +303,9 @@ export default function WorkforceConsolePage() {
               : 'Assign work to begin streaming output.'}
           </p>
           <div aria-live="polite" className="output">
-            {activeWork ? activeWork.output || 'Starting stream…' : 'No active stream.'}
+            {activeWork
+              ? activeWork.output || 'Starting stream…'
+              : 'No active stream.'}
           </div>
         </div>
       </section>

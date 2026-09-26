@@ -64,7 +64,8 @@ export function canAssignWork({
   }
 
   return hiredEmployees.some(
-    (employee) => employee.id === selectedEmployeeId && employee.status === 'idle'
+    (employee) =>
+      employee.id === selectedEmployeeId && employee.status === 'idle'
   );
 }
 
