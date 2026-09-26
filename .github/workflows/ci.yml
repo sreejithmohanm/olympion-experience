@@ -18,7 +18,7 @@ jobs:
       - name: Type Check
         run: npm run type-check
       - name: Install workforce-console deps
-        run: npm install --workspaces=false --no-package-lock
+        run: npm ci --workspaces=false
         working-directory: apps/workforce-console
       - name: Build
         run: npm run build

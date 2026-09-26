@@ -217,7 +217,12 @@ export default function WorkforceConsolePage() {
             Connected with API key ending in {apiKeySuffix}.
           </p>
         </div>
-        <button className="secondary" onClick={handleDisconnect} type="button">
+        <button
+          aria-label="Disconnect and clear hired employees and work history"
+          className="secondary"
+          onClick={handleDisconnect}
+          type="button"
+        >
           Disconnect
         </button>
       </section>
