@@ -30,4 +30,11 @@ declare module '@olympion/workforce-os-sdk' {
   ): WorkforceOSClient;
 
   export const employees: EmployeesResource;
+
+  const workforceOS: {
+    createClient: typeof createClient;
+    employees: EmployeesResource;
+  };
+
+  export default workforceOS;
 }
