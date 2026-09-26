@@ -9,6 +9,6 @@
     "lint": "npx --yes eslint@8.57.0 . && npx --yes prettier@3.6.2 --check . && npm run lint --if-present --workspace=@olympion/workforce-console --workspace=@olympion/design-system --workspace=@olympion/experience-sdk --workspace=@olympion/experience-shared-types --workspace=@olympion/ui-components",
     "type-check": "npx --yes -p typescript@5.9.2 tsc --noEmit -p tsconfig.json && npm run type-check --if-present --workspace=@olympion/workforce-console --workspace=@olympion/design-system --workspace=@olympion/experience-sdk --workspace=@olympion/experience-shared-types --workspace=@olympion/ui-components",
     "test": "npm run test --workspaces --if-present",
-    "build": "npm run build --if-present --workspace=@olympion/workforce-console --workspace=@olympion/design-system --workspace=@olympion/experience-sdk --workspace=@olympion/experience-shared-types --workspace=@olympion/ui-components"
+    "build": "npm run validate-build --if-present --workspace=@olympion/workforce-console && npm run build --if-present --workspace=@olympion/design-system --workspace=@olympion/experience-sdk --workspace=@olympion/experience-shared-types --workspace=@olympion/ui-components"
   }
 }

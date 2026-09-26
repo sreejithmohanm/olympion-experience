@@ -5,11 +5,12 @@
   "description": "Workforce Console application workspace",
   "scripts": {
     "dev": "next dev",
-    "build": "node --check src/app/layout.js && node --check src/app/page.js && node --check src/lib/workforceConsole.mjs && node --check next.config.mjs",
+    "build": "next build",
     "start": "next start",
     "lint": "node --check src/app/layout.js && node --check src/app/page.js && node --check next.config.mjs",
     "type-check": "node --check src/app/layout.js && node --check src/app/page.js && node --check src/lib/workforceConsole.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "validate-build": "node --check src/app/layout.js && node --check src/app/page.js && node --check src/lib/workforceConsole.mjs && node --check next.config.mjs"
   },
   "dependencies": {
     "next": "16.2.10",
