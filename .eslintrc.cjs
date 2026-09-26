@@ -18,6 +18,12 @@ module.exports = {
         },
         sourceType: 'module'
       }
+    },
+    {
+      files: ['apps/workforce-console/**/*.mjs'],
+      parserOptions: {
+        sourceType: 'module'
+      }
     }
   ]
 };
