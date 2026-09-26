@@ -1,31 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  canAssignWork,
   EMPLOYEE_CATALOG,
   createWorkItem,
-  hireEmployee
+  getIdleEmployees,
+  hireEmployee,
+  setEmployeeStatus
 } from '../lib/workforceConsole.mjs';
 
-function readStoredState(key, fallback) {
-  if (typeof window === 'undefined') {
-    return fallback;
-  }
-
-  const raw = window.localStorage.getItem(key);
-  if (!raw) {
-    return fallback;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
-}
-
 export default function WorkforceConsolePage() {
-  const [apiKey, setApiKey] = useState('');
+  const streamIntervalRef = useRef(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const [apiKeySuffix, setApiKeySuffix] = useState('');
   const [draftApiKey, setDraftApiKey] = useState('');
   const [hiredEmployees, setHiredEmployees] = useState([]);
   const [prompt, setPrompt] = useState('');
@@ -34,42 +22,31 @@ export default function WorkforceConsolePage() {
   const [activeWorkId, setActiveWorkId] = useState('');
 
   useEffect(() => {
-    setApiKey(readStoredState('wf.apiKey', ''));
-    setHiredEmployees(readStoredState('wf.hiredEmployees', []));
-    setWorkItems(readStoredState('wf.workItems', []));
-    setActiveWorkId(readStoredState('wf.activeWorkId', ''));
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    window.localStorage.setItem('wf.apiKey', JSON.stringify(apiKey));
-    window.localStorage.setItem('wf.hiredEmployees', JSON.stringify(hiredEmployees));
-    window.localStorage.setItem('wf.workItems', JSON.stringify(workItems));
-    window.localStorage.setItem('wf.activeWorkId', JSON.stringify(activeWorkId));
-  }, [activeWorkId, apiKey, hiredEmployees, workItems]);
-
-  useEffect(() => {
-    const activeWork = workItems.find((item) => item.id === activeWorkId);
-
-    if (!activeWork || activeWork.status !== 'streaming') {
+    if (!activeWorkId) {
       return undefined;
     }
 
-    let tokenIndex = activeWork.output
-      ? activeWork.output.trim().split(/\s+/).length
-      : 0;
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+    }
 
     const interval = setInterval(() => {
       setWorkItems((currentItems) => {
-        const itemToUpdate = currentItems.find((item) => item.id === activeWork.id);
+        const itemToUpdate = currentItems.find((item) => item.id === activeWorkId);
         if (!itemToUpdate || itemToUpdate.status !== 'streaming') {
           return currentItems;
         }
 
+        const tokenIndex = itemToUpdate.output
+          ? itemToUpdate.output.trim().split(/\s+/).length
+          : 0;
+
         if (tokenIndex >= itemToUpdate.tokens.length) {
+          setHiredEmployees((currentEmployees) =>
+            setEmployeeStatus(currentEmployees, itemToUpdate.employeeId, 'idle')
+          );
+          setActiveWorkId('');
+
           return currentItems.map((item) =>
             item.id === itemToUpdate.id
               ? {
@@ -81,7 +58,6 @@ export default function WorkforceConsolePage() {
         }
 
         const nextToken = itemToUpdate.tokens[tokenIndex];
-        tokenIndex += 1;
 
         return currentItems.map((item) =>
           item.id === itemToUpdate.id
@@ -93,17 +69,44 @@ export default function WorkforceConsolePage() {
         );
       });
     }, 250);
+    streamIntervalRef.current = interval;
 
-    return () => clearInterval(interval);
-  }, [activeWorkId, workItems]);
+    return () => {
+      clearInterval(interval);
+      if (streamIntervalRef.current === interval) {
+        streamIntervalRef.current = null;
+      }
+    };
+  }, [activeWorkId]);
 
   const activeWork = useMemo(
     () => workItems.find((item) => item.id === activeWorkId),
     [activeWorkId, workItems]
   );
+  const hasStreamingWork = useMemo(
+    () => workItems.some((item) => item.status === 'streaming'),
+    [workItems]
+  );
+  const idleEmployees = useMemo(
+    () => getIdleEmployees(hiredEmployees),
+    [hiredEmployees]
+  );
+  const canSubmitAssignment = useMemo(
+    () =>
+      canAssignWork({
+        hiredEmployees,
+        selectedEmployeeId,
+        prompt,
+        hasStreamingWork
+      }),
+    [hiredEmployees, selectedEmployeeId, prompt, hasStreamingWork]
+  );
 
   const completedWorkItems = useMemo(
-    () => workItems.filter((item) => item.status === 'completed').reverse(),
+    () =>
+      [...workItems]
+        .filter((item) => item.status === 'completed')
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt)),
     [workItems]
   );
 
@@ -114,7 +117,10 @@ export default function WorkforceConsolePage() {
       return;
     }
 
-    setApiKey(draftApiKey.trim());
+    const trimmedKey = draftApiKey.trim();
+    setApiKeySuffix(trimmedKey.slice(-4));
+    setDraftApiKey('');
+    setIsConnected(true);
   };
 
   const handleHire = (employee) => {
@@ -124,7 +130,7 @@ export default function WorkforceConsolePage() {
   const handleAssignWork = (event) => {
     event.preventDefault();
 
-    if (!selectedEmployeeId || !prompt.trim()) {
+    if (!canSubmitAssignment) {
       return;
     }
 
@@ -136,18 +142,30 @@ export default function WorkforceConsolePage() {
 
     setWorkItems((current) => [...current, workItem]);
     setActiveWorkId(workItem.id);
+    setHiredEmployees((currentEmployees) =>
+      setEmployeeStatus(currentEmployees, selectedEmployeeId, 'busy')
+    );
     setPrompt('');
+    setSelectedEmployeeId('');
   };
 
   const handleDisconnect = () => {
-    setApiKey('');
-    setDraftApiKey('');
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+      streamIntervalRef.current = null;
+    }
+
+    setApiKeySuffix('');
     setHiredEmployees([]);
     setWorkItems([]);
     setActiveWorkId('');
+    setSelectedEmployeeId('');
+    setPrompt('');
+    setDraftApiKey('');
+    setIsConnected(false);
   };
 
-  if (!apiKey) {
+  if (!isConnected) {
     return (
       <main>
         <section className="panel" style={{ maxWidth: 520, margin: '48px auto' }}>
@@ -157,10 +175,12 @@ export default function WorkforceConsolePage() {
             <div>
               <label htmlFor="api-key">API key</label>
               <input
+                autoComplete="off"
                 id="api-key"
                 name="api-key"
                 onChange={(event) => setDraftApiKey(event.target.value)}
                 placeholder="opx_live_..."
+                required
                 type="password"
                 value={draftApiKey}
               />
@@ -177,7 +197,7 @@ export default function WorkforceConsolePage() {
       <section className="panel" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
         <div>
           <h1>Workforce Console</h1>
-          <p className="muted">Connected with API key ending in {apiKey.slice(-4)}.</p>
+          <p className="muted">Connected with API key ending in {apiKeySuffix}.</p>
         </div>
         <button className="secondary" onClick={handleDisconnect} type="button">
           Disconnect
@@ -229,10 +249,11 @@ export default function WorkforceConsolePage() {
               <select
                 id="employee"
                 onChange={(event) => setSelectedEmployeeId(event.target.value)}
+                required
                 value={selectedEmployeeId}
               >
                 <option value="">Choose a hired employee</option>
-                {hiredEmployees.map((employee) => (
+                {idleEmployees.map((employee) => (
                   <option key={employee.id} value={employee.id}>
                     {employee.name}
                   </option>
@@ -245,11 +266,12 @@ export default function WorkforceConsolePage() {
                 id="prompt"
                 onChange={(event) => setPrompt(event.target.value)}
                 placeholder="Create a customer-ready weekly status report..."
+                required
                 rows={4}
                 value={prompt}
               />
             </div>
-            <button disabled={hiredEmployees.length === 0} type="submit">
+            <button disabled={!canSubmitAssignment} type="submit">
               Assign and Stream
             </button>
           </form>
@@ -262,7 +284,9 @@ export default function WorkforceConsolePage() {
               ? `Streaming ${activeWork.employeeName} (${activeWork.status})`
               : 'Assign work to begin streaming output.'}
           </p>
-          <div className="output">{activeWork ? activeWork.output || 'Starting stream…' : 'No active stream.'}</div>
+          <div aria-live="polite" className="output">
+            {activeWork ? activeWork.output || 'Starting stream…' : 'No active stream.'}
+          </div>
         </div>
       </section>
 
@@ -275,6 +299,7 @@ export default function WorkforceConsolePage() {
             <div className="stack">
               {completedWorkItems.map((item) => (
                 <button
+                  aria-label={`View full output for ${item.employeeName}`}
                   className="secondary"
                   key={item.id}
                   onClick={() => setActiveWorkId(item.id)}
@@ -282,6 +307,7 @@ export default function WorkforceConsolePage() {
                   type="button"
                 >
                   <strong>{item.employeeName}</strong>
+                  {activeWorkId === item.id ? ' (Viewing)' : ''}
                   <br />
                   <span className="muted">{item.prompt}</span>
                 </button>

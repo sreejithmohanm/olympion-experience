@@ -16,6 +16,14 @@ export const EMPLOYEE_CATALOG = [
   }
 ];
 
+function createWorkId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return `work-${globalThis.crypto.randomUUID()}`;
+  }
+
+  return `work-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function hireEmployee(hiredEmployees, employee) {
   if (hiredEmployees.some((current) => current.id === employee.id)) {
     return hiredEmployees;
@@ -28,6 +36,36 @@ export function hireEmployee(hiredEmployees, employee) {
       status: 'idle'
     }
   ];
+}
+
+export function setEmployeeStatus(hiredEmployees, employeeId, status) {
+  return hiredEmployees.map((employee) =>
+    employee.id === employeeId
+      ? {
+          ...employee,
+          status
+        }
+      : employee
+  );
+}
+
+export function getIdleEmployees(hiredEmployees) {
+  return hiredEmployees.filter((employee) => employee.status === 'idle');
+}
+
+export function canAssignWork({
+  hiredEmployees,
+  selectedEmployeeId,
+  prompt,
+  hasStreamingWork
+}) {
+  if (hasStreamingWork || !selectedEmployeeId || !prompt.trim()) {
+    return false;
+  }
+
+  return hiredEmployees.some(
+    (employee) => employee.id === selectedEmployeeId && employee.status === 'idle'
+  );
 }
 
 export function tokenizeResponse(prompt, employeeName) {
@@ -45,7 +83,7 @@ export function createWorkItem({ employeeId, prompt, hiredEmployees }) {
   const tokens = tokenizeResponse(prompt, employee.name);
 
   return {
-    id: `work-${Date.now()}`,
+    id: createWorkId(),
     employeeId,
     employeeName: employee.name,
     prompt,
