@@ -125,7 +125,17 @@ export default function WorkforceConsolePage() {
       return;
     }
 
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+      streamIntervalRef.current = null;
+    }
+
     const trimmedKey = draftApiKey.trim();
+    setHiredEmployees([]);
+    setWorkItems([]);
+    setActiveWorkId('');
+    setSelectedEmployeeId('');
+    setPrompt('');
     setApiKeySuffix(trimmedKey.slice(-4));
     setDraftApiKey('');
     setIsConnected(true);
@@ -218,7 +228,7 @@ export default function WorkforceConsolePage() {
           </p>
         </div>
         <button
-          aria-label="Disconnect and clear hired employees and work history"
+          aria-label="Disconnect and clear API key status, prompt, hired employees, and work history"
           className="secondary"
           onClick={handleDisconnect}
           type="button"
