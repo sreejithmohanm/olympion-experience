@@ -26,6 +26,15 @@ export default function WorkforceConsolePage() {
       return undefined;
     }
 
+    const activeItem = workItems.find((item) => item.id === activeWorkId);
+    if (!activeItem || activeItem.status !== 'streaming') {
+      if (streamIntervalRef.current) {
+        clearInterval(streamIntervalRef.current);
+        streamIntervalRef.current = null;
+      }
+      return undefined;
+    }
+
     if (streamIntervalRef.current) {
       clearInterval(streamIntervalRef.current);
     }
