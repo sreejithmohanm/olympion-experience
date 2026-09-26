@@ -61,7 +61,7 @@ test('SDK client exposes employees.list() method that is callable', async () => 
   ];
   const mockSdk = {
     employees: {
-      list: async (_params) => ({ data: mockEmployees, total: mockEmployees.length })
+      list: async () => ({ data: mockEmployees, total: mockEmployees.length })
     }
   };
 
