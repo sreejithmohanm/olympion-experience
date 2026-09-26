@@ -21,13 +21,18 @@ export default function WorkforceConsolePage() {
   const [workItems, setWorkItems] = useState([]);
   const [activeWorkId, setActiveWorkId] = useState('');
 
+  const activeWork = useMemo(
+    () => workItems.find((item) => item.id === activeWorkId),
+    [activeWorkId, workItems]
+  );
+  const activeWorkStatus = activeWork?.status;
+
   useEffect(() => {
     if (!activeWorkId) {
       return undefined;
     }
 
-    const activeItem = workItems.find((item) => item.id === activeWorkId);
-    if (!activeItem || activeItem.status !== 'streaming') {
+    if (!activeWork || activeWorkStatus !== 'streaming') {
       if (streamIntervalRef.current) {
         clearInterval(streamIntervalRef.current);
         streamIntervalRef.current = null;
@@ -88,12 +93,7 @@ export default function WorkforceConsolePage() {
         streamIntervalRef.current = null;
       }
     };
-  }, [activeWorkId]);
-
-  const activeWork = useMemo(
-    () => workItems.find((item) => item.id === activeWorkId),
-    [activeWorkId, workItems]
-  );
+  }, [activeWorkId, activeWorkStatus]);
   const hasStreamingWork = useMemo(
     () => workItems.some((item) => item.status === 'streaming'),
     [workItems]
