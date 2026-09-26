@@ -7,10 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "node --check src/app/layout.js && node --check src/app/page.js && node --check next.config.mjs",
-    "type-check": "node --check src/app/layout.js && node --check src/app/page.js && node --check src/lib/workforceConsole.mjs",
+    "validate-syntax": "node --check src/app/layout.js && node --check src/app/page.js && node --check src/lib/workforceConsole.mjs && node --check next.config.mjs",
     "test": "node --test",
-    "validate-build": "node --check src/app/layout.js && node --check src/app/page.js && node --check src/lib/workforceConsole.mjs && node --check next.config.mjs"
+    "lint": "npx --yes eslint@8.57.0 src/app/layout.js src/app/page.js src/lib/workforceConsole.mjs next.config.mjs"
   },
   "dependencies": {
     "next": "16.3.3",
