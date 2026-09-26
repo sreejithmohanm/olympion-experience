@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Olympion — The Home of Enterprise AI Professionals",
-  description: "Recruit AI professionals created, trained, and continuously evolved at Olympion.",
+  title: 'Olympion — The Home of Enterprise AI Professionals',
+  description:
+    'Recruit AI professionals created, trained, and continuously evolved at Olympion.'
 };
 
 export default function RootLayout({
-  children,
+  children
 }: Readonly<{
   children: React.ReactNode;
 }>) {
