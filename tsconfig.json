@@ -20,5 +20,6 @@
     "packages/**/*.ts",
     "packages/**/*.d.ts",
     "types/**/*.d.ts"
-  ]
+  ],
+  "exclude": ["apps/website/**"]
 }
