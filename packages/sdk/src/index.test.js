@@ -18,6 +18,24 @@ function loadSdkWithMock(mockSdk) {
   return require('./index.js');
 }
 
+function loadSdkWithMissingDependency() {
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (request === '@olympion/workforce-os-sdk') {
+      const error = new Error(
+        "Cannot find module '@olympion/workforce-os-sdk'"
+      );
+      error.code = 'MODULE_NOT_FOUND';
+      throw error;
+    }
+
+    return originalLoad.call(this, request, parent, isMain);
+  };
+
+  const sdkPath = require.resolve('./index.js');
+  delete require.cache[sdkPath];
+  return require('./index.js');
+}
+
 test.afterEach(() => {
   Module._load = originalLoad;
 });
@@ -90,4 +108,18 @@ test('SDK client employees.list() forwards optional params to the underlying SDK
 
   await client.employees.list({ page: 2, pageSize: 10 });
   assert.deepEqual(capturedParams, { page: 2, pageSize: 10 });
+});
+
+test('createExperienceSdk defers missing dependency errors until workforce methods are used', () => {
+  const sdk = loadSdkWithMissingDependency();
+  const client = sdk.createExperienceSdk({ environment: 'test' });
+
+  assert.deepEqual(client.config, {
+    environment: 'test'
+  });
+
+  assert.throws(
+    () => client.employees,
+    /The optional dependency "@olympion\/workforce-os-sdk" is not available/
+  );
 });
