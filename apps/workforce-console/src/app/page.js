@@ -1,25 +1,91 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createExperienceSdk } from '@olympion/experience-sdk';
 import {
   canAssignWork,
+  clearStoredJwt,
+  decodeJwtPayload,
   EMPLOYEE_CATALOG,
   createWorkItem,
+  exchangeApiKeyForJwt,
   getIdleEmployees,
+  getStoredJwt,
   hireEmployee,
+  INVALID_API_KEY_ERROR_MESSAGE,
+  isJwtExpired,
+  SESSION_EXPIRED_ERROR_MESSAGE,
+  storeJwt,
   setEmployeeStatus
 } from '../lib/workforceConsole.mjs';
 
 export default function WorkforceConsolePage() {
   const streamIntervalRef = useRef(null);
+  const authIntervalRef = useRef(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [apiKeySuffix, setApiKeySuffix] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [draftApiKey, setDraftApiKey] = useState('');
   const [hiredEmployees, setHiredEmployees] = useState([]);
   const [prompt, setPrompt] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [workItems, setWorkItems] = useState([]);
   const [activeWorkId, setActiveWorkId] = useState('');
+
+  const clearWorkforceState = () => {
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+      streamIntervalRef.current = null;
+    }
+
+    setHiredEmployees([]);
+    setWorkItems([]);
+    setActiveWorkId('');
+    setSelectedEmployeeId('');
+    setPrompt('');
+  };
+
+  const setLoginRedirectToCurrentUrl = () => {
+    const browserWindow = globalThis.window;
+    if (!browserWindow) {
+      return '/';
+    }
+
+    const currentUrl = new URL(browserWindow.location.href);
+    const searchParams = new URLSearchParams(currentUrl.search);
+    searchParams.delete('redirect');
+    const currentPath = `${currentUrl.pathname}${
+      searchParams.toString() ? `?${searchParams.toString()}` : ''
+    }${currentUrl.hash}`;
+    const nextSearchParams = new URLSearchParams(currentUrl.search);
+    nextSearchParams.set('redirect', currentPath);
+    const loginUrl = `${currentUrl.pathname}?${nextSearchParams.toString()}${
+      currentUrl.hash
+    }`;
+
+    browserWindow.history.replaceState(null, '', loginUrl);
+    return currentPath;
+  };
+
+  const toSafeRedirectPath = (redirectTarget) => {
+    const browserWindow = globalThis.window;
+    if (!browserWindow || !redirectTarget) {
+      return '';
+    }
+
+    try {
+      const parsedUrl = new URL(redirectTarget, browserWindow.location.origin);
+      if (parsedUrl.origin !== browserWindow.location.origin) {
+        return '';
+      }
+
+      return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+    } catch {
+      return '';
+    }
+  };
 
   const activeWork = useMemo(
     () => workItems.find((item) => item.id === activeWorkId),
@@ -118,27 +184,119 @@ export default function WorkforceConsolePage() {
     [workItems]
   );
 
-  const handleConnect = (event) => {
+  useEffect(() => {
+    if (!globalThis.window) {
+      return;
+    }
+
+    const jwt = getStoredJwt();
+    if (!jwt) {
+      setLoginRedirectToCurrentUrl();
+      setIsAuthReady(true);
+      return;
+    }
+
+    if (isJwtExpired(jwt)) {
+      clearStoredJwt();
+      setAuthError(SESSION_EXPIRED_ERROR_MESSAGE);
+      setLoginRedirectToCurrentUrl();
+      setIsAuthReady(true);
+      return;
+    }
+
+    const payload = decodeJwtPayload(jwt);
+    setApiKeySuffix(String(payload?.keySuffix ?? 'saved'));
+    setIsConnected(true);
+    setIsAuthReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isConnected) {
+      if (authIntervalRef.current) {
+        clearInterval(authIntervalRef.current);
+        authIntervalRef.current = null;
+      }
+      return undefined;
+    }
+
+    if (authIntervalRef.current) {
+      clearInterval(authIntervalRef.current);
+    }
+
+    const interval = setInterval(() => {
+      const jwt = getStoredJwt();
+      if (!jwt || isJwtExpired(jwt)) {
+        clearInterval(interval);
+        authIntervalRef.current = null;
+        clearStoredJwt();
+        clearWorkforceState();
+        setApiKeySuffix('');
+        setIsConnected(false);
+        setAuthError(SESSION_EXPIRED_ERROR_MESSAGE);
+        setLoginRedirectToCurrentUrl();
+      }
+    }, 30_000);
+    authIntervalRef.current = interval;
+
+    return () => {
+      clearInterval(interval);
+      if (authIntervalRef.current === interval) {
+        authIntervalRef.current = null;
+      }
+    };
+  }, [isConnected]);
+
+  const handleConnect = async (event) => {
     event.preventDefault();
+    setAuthError('');
 
     if (!draftApiKey.trim()) {
       return;
     }
 
-    if (streamIntervalRef.current) {
-      clearInterval(streamIntervalRef.current);
-      streamIntervalRef.current = null;
-    }
+    setIsAuthenticating(true);
 
-    const trimmedKey = draftApiKey.trim();
-    setHiredEmployees([]);
-    setWorkItems([]);
-    setActiveWorkId('');
-    setSelectedEmployeeId('');
-    setPrompt('');
-    setApiKeySuffix(trimmedKey.slice(-4));
-    setDraftApiKey('');
-    setIsConnected(true);
+    try {
+      const trimmedKey = draftApiKey.trim();
+      const sdk = createExperienceSdk();
+      const jwt = await exchangeApiKeyForJwt({
+        apiKey: trimmedKey,
+        sdk
+      });
+
+      if (isJwtExpired(jwt)) {
+        throw new Error(SESSION_EXPIRED_ERROR_MESSAGE);
+      }
+
+      const payload = decodeJwtPayload(jwt);
+      const keySuffix =
+        payload?.keySuffix ??
+        (trimmedKey.length >= 4 ? trimmedKey.slice(-4) : '');
+      storeJwt(jwt);
+      clearWorkforceState();
+      setApiKeySuffix(keySuffix);
+      setDraftApiKey('');
+      setIsConnected(true);
+
+      const browserWindow = globalThis.window;
+      if (browserWindow) {
+        const currentUrl = new URL(browserWindow.location.href);
+        const safeRedirectPath = toSafeRedirectPath(
+          currentUrl.searchParams.get('redirect')
+        );
+        if (safeRedirectPath) {
+          browserWindow.history.replaceState(null, '', safeRedirectPath);
+        }
+      }
+    } catch (error) {
+      clearStoredJwt();
+      clearWorkforceState();
+      setIsConnected(false);
+      setApiKeySuffix('');
+      setAuthError(error.message || INVALID_API_KEY_ERROR_MESSAGE);
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   const handleHire = (employee) => {
@@ -168,20 +326,28 @@ export default function WorkforceConsolePage() {
   };
 
   const handleDisconnect = () => {
-    if (streamIntervalRef.current) {
-      clearInterval(streamIntervalRef.current);
-      streamIntervalRef.current = null;
-    }
-
+    clearStoredJwt();
+    clearWorkforceState();
     setApiKeySuffix('');
-    setHiredEmployees([]);
-    setWorkItems([]);
-    setActiveWorkId('');
-    setSelectedEmployeeId('');
-    setPrompt('');
     setDraftApiKey('');
+    setAuthError('');
     setIsConnected(false);
+    setLoginRedirectToCurrentUrl();
   };
+
+  if (!isAuthReady) {
+    return (
+      <main aria-busy="true">
+        <section
+          className="panel"
+          role="status"
+          style={{ maxWidth: 520, margin: '48px auto' }}
+        >
+          <p className="muted">Checking your session…</p>
+        </section>
+      </main>
+    );
+  }
 
   if (!isConnected) {
     return (
@@ -194,6 +360,17 @@ export default function WorkforceConsolePage() {
           <p className="muted">
             Enter your API key to access your digital workforce.
           </p>
+          {authError ? (
+            <p
+              role="alert"
+              style={{
+                color: 'var(--danger-color, #b42318)',
+                marginBottom: 12
+              }}
+            >
+              {authError}
+            </p>
+          ) : null}
           <form className="stack" onSubmit={handleConnect}>
             <div>
               <label htmlFor="api-key">API key</label>
@@ -208,7 +385,9 @@ export default function WorkforceConsolePage() {
                 value={draftApiKey}
               />
             </div>
-            <button type="submit">Access Console</button>
+            <button disabled={isAuthenticating} type="submit">
+              {isAuthenticating ? 'Signing in…' : 'Access Console'}
+            </button>
           </form>
         </section>
       </main>
@@ -224,7 +403,7 @@ export default function WorkforceConsolePage() {
         <div>
           <h1>Workforce Console</h1>
           <p className="muted">
-            Connected with API key ending in {apiKeySuffix}.
+            Connected with API key ending in {apiKeySuffix || 'saved'}.
           </p>
         </div>
         <button
