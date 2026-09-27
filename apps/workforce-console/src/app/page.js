@@ -270,7 +270,8 @@ export default function WorkforceConsolePage() {
 
       const payload = decodeJwtPayload(jwt);
       const keySuffix =
-        payload?.keySuffix ?? (trimmedKey.length >= 4 ? trimmedKey.slice(-4) : '');
+        payload?.keySuffix ??
+        (trimmedKey.length >= 4 ? trimmedKey.slice(-4) : '');
       storeJwt(jwt);
       clearWorkforceState();
       setApiKeySuffix(keySuffix);
@@ -337,7 +338,11 @@ export default function WorkforceConsolePage() {
   if (!isAuthReady) {
     return (
       <main aria-busy="true">
-        <section className="panel" role="status" style={{ maxWidth: 520, margin: '48px auto' }}>
+        <section
+          className="panel"
+          role="status"
+          style={{ maxWidth: 520, margin: '48px auto' }}
+        >
           <p className="muted">Checking your session…</p>
         </section>
       </main>
@@ -358,7 +363,10 @@ export default function WorkforceConsolePage() {
           {authError ? (
             <p
               role="alert"
-              style={{ color: 'var(--danger-color, #b42318)', marginBottom: 12 }}
+              style={{
+                color: 'var(--danger-color, #b42318)',
+                marginBottom: 12
+              }}
             >
               {authError}
             </p>
