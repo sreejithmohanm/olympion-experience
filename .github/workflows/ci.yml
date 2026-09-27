@@ -17,5 +17,8 @@ jobs:
         run: npm run lint
       - name: Type Check
         run: npm run type-check
+      - name: Install workforce-console deps
+        run: npm ci --workspaces=false
+        working-directory: apps/workforce-console
       - name: Build
         run: npm run build

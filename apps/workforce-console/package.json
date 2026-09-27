@@ -3,11 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "description": "Workforce Console application workspace",
-  "main": "src/index.js",
   "scripts": {
-    "lint": "node --check src/index.js",
-    "type-check": "node --check src/index.js",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "validate-syntax": "node --check src/app/layout.js && node --check src/app/page.js && node --check src/lib/workforceConsole.mjs && node --check next.config.mjs",
     "test": "node --test",
-    "build": "node --check src/index.js"
+    "lint": "npx --yes eslint@8.57.0 src/app/layout.js src/app/page.js src/lib/workforceConsole.mjs next.config.mjs",
+    "type-check": "npm run validate-syntax"
+  },
+  "dependencies": {
+    "next": "16.3.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   }
 }
