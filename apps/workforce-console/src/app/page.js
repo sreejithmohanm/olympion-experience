@@ -6,12 +6,10 @@ import {
   canAssignWork,
   clearStoredJwt,
   decodeJwtPayload,
-  EMPLOYEE_CATALOG,
   createWorkItem,
   exchangeApiKeyForJwt,
   getIdleEmployees,
   getStoredJwt,
-  hireEmployee,
   INVALID_API_KEY_ERROR_MESSAGE,
   isJwtExpired,
   SESSION_EXPIRED_ERROR_MESSAGE,
@@ -55,18 +53,20 @@ export default function WorkforceConsolePage() {
 
     const currentUrl = new URL(browserWindow.location.href);
     const searchParams = new URLSearchParams(currentUrl.search);
+    const existingRedirect = searchParams.get('redirect');
     searchParams.delete('redirect');
     const currentPath = `${currentUrl.pathname}${
       searchParams.toString() ? `?${searchParams.toString()}` : ''
     }${currentUrl.hash}`;
+    const redirectPath = toSafeRedirectPath(existingRedirect) || currentPath;
     const nextSearchParams = new URLSearchParams(currentUrl.search);
-    nextSearchParams.set('redirect', currentPath);
+    nextSearchParams.set('redirect', redirectPath);
     const loginUrl = `${currentUrl.pathname}?${nextSearchParams.toString()}${
       currentUrl.hash
     }`;
 
     browserWindow.history.replaceState(null, '', loginUrl);
-    return currentPath;
+    return redirectPath;
   };
 
   const toSafeRedirectPath = (redirectTarget) => {
@@ -299,10 +299,6 @@ export default function WorkforceConsolePage() {
     }
   };
 
-  const handleHire = (employee) => {
-    setHiredEmployees((current) => hireEmployee(current, employee));
-  };
-
   const handleAssignWork = (event) => {
     event.preventDefault();
 
@@ -418,27 +414,10 @@ export default function WorkforceConsolePage() {
 
       <section className="panel">
         <h2>Employee Catalog</h2>
-        <div className="grid two">
-          {EMPLOYEE_CATALOG.map((employee) => {
-            const isHired = hiredEmployees.some(
-              (current) => current.id === employee.id
-            );
-
-            return (
-              <article className="card" key={employee.id}>
-                <h3>{employee.name}</h3>
-                <p className="muted">{employee.specialty}</p>
-                <button
-                  disabled={isHired}
-                  onClick={() => handleHire(employee)}
-                  type="button"
-                >
-                  {isHired ? 'Hired' : 'Hire'}
-                </button>
-              </article>
-            );
-          })}
-        </div>
+        <p className="muted">
+          Browse available Digital Professionals and add them to your workforce.
+        </p>
+        <a href="/catalog">Browse catalog</a>
       </section>
 
       <section className="panel">

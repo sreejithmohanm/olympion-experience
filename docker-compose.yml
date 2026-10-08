@@ -4,11 +4,11 @@ services:
       context: .
       dockerfile: docker/Dockerfile.website
     ports:
-      - "3000:3000"
+      - '3000:3000'
 
   workforce-console:
     build:
       context: .
       dockerfile: docker/Dockerfile.workforce-console
     ports:
-      - "3001:80"
+      - '3001:80'
