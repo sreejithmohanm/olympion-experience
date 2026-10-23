@@ -4,7 +4,8 @@ import {
   createEmployee,
   fetchCatalog,
   fetchEmployee,
-  fetchEmployees
+  fetchEmployees,
+  terminateEmployee
 } from './catalogApi.mjs';
 
 function response(body, { ok = true, status = 200 } = {}) {
@@ -103,4 +104,23 @@ test('employee API errors are surfaced and details use a safely encoded ID', asy
 
   assert.equal(requestedUrl, '/v1/employees/employee%2F1');
   assert.equal(employee.name, 'Ari');
+});
+
+test('terminateEmployee sends an authenticated DELETE to the encoded employee URL', async () => {
+  let request;
+  await terminateEmployee({
+    jwt: 'session-token',
+    employeeId: 'employee/1',
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return response(null);
+    }
+  });
+
+  assert.equal(request.url, '/v1/employees/employee%2F1');
+  assert.equal(request.options.method, 'DELETE');
+  assert.equal(
+    request.options.headers.Authorization,
+    'Bearer ' + 'session-token'
+  );
 });
