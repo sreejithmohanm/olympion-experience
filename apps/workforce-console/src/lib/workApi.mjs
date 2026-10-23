@@ -50,9 +50,7 @@ function dispatchEvent(block, onEvent) {
     const separator = line.indexOf(':');
     const field = separator === -1 ? line : line.slice(0, separator);
     const value =
-      separator === -1
-        ? ''
-        : line.slice(separator + 1).replace(/^ /, '');
+      separator === -1 ? '' : line.slice(separator + 1).replace(/^ /, '');
 
     if (field === 'event') {
       event = value;
@@ -66,7 +64,11 @@ function dispatchEvent(block, onEvent) {
   }
 }
 
-export async function fetchEmployeeWork({ jwt, employeeId, fetchImpl = fetch }) {
+export async function fetchEmployeeWork({
+  jwt,
+  employeeId,
+  fetchImpl = fetch
+}) {
   const response = await fetchImpl(
     `/v1/employees/${encodeURIComponent(employeeId)}/work`,
     { headers: createHeaders(jwt) }
@@ -111,21 +113,20 @@ export async function submitEmployeeWork({
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let done = false;
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
+    while (!done) {
+      const result = await reader.read();
+      done = result.done;
+      const { value } = result;
       buffer += decoder.decode(value, { stream: !done });
 
       const blocks = buffer.split(/\r?\n\r?\n/);
       buffer = blocks.pop() ?? '';
       blocks.forEach((block) => dispatchEvent(block, onEvent));
-
-      if (done) {
-        dispatchEvent(buffer, onEvent);
-        break;
-      }
     }
+    dispatchEvent(buffer, onEvent);
   } finally {
     reader.releaseLock();
   }
