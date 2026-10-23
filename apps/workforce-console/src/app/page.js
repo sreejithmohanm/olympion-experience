@@ -58,7 +58,9 @@ export default function WorkforceConsolePage() {
     const currentPath = `${currentUrl.pathname}${
       searchParams.toString() ? `?${searchParams.toString()}` : ''
     }${currentUrl.hash}`;
-    const redirectPath = toSafeRedirectPath(existingRedirect) || currentPath;
+    const redirectPath =
+      toSafeRedirectPath(existingRedirect) ||
+      (currentUrl.pathname === '/' ? '/employees' : currentPath);
     const nextSearchParams = new URLSearchParams(currentUrl.search);
     nextSearchParams.set('redirect', redirectPath);
     const loginUrl = `${currentUrl.pathname}?${nextSearchParams.toString()}${

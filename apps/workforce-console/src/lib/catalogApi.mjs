@@ -109,3 +109,16 @@ export async function fetchEmployee({ jwt, employeeId, fetchImpl = fetch }) {
 
   return getEmployee(body);
 }
+
+export async function terminateEmployee({
+  jwt,
+  employeeId,
+  fetchImpl = fetch
+}) {
+  await readResponse(
+    await fetchImpl(`/v1/employees/${encodeURIComponent(employeeId)}`, {
+      method: 'DELETE',
+      headers: createHeaders(jwt)
+    })
+  );
+}
