@@ -24,7 +24,7 @@ function getWorkItems(body) {
       return value;
     }
 
-    for (const key of ['workItems', 'work_items', 'items']) {
+    for (const key of ['workItems', 'work_items', 'work', 'items']) {
       if (Array.isArray(value?.[key])) {
         return value[key];
       }
@@ -50,9 +50,7 @@ function dispatchEvent(block, onEvent) {
     const separator = line.indexOf(':');
     const field = separator === -1 ? line : line.slice(0, separator);
     const value =
-      separator === -1
-        ? ''
-        : line.slice(separator + 1).replace(/^ /, '');
+      separator === -1 ? '' : line.slice(separator + 1).replace(/^ /, '');
 
     if (field === 'event') {
       event = value;
@@ -62,11 +60,18 @@ function dispatchEvent(block, onEvent) {
   }
 
   if (data.length > 0) {
-    onEvent({ event, data: data.join('\n') });
+    const value = data.join('\n');
+    if (value !== '[DONE]') {
+      onEvent({ event, data: value });
+    }
   }
 }
 
-export async function fetchEmployeeWork({ jwt, employeeId, fetchImpl = fetch }) {
+export async function fetchEmployeeWork({
+  jwt,
+  employeeId,
+  fetchImpl = fetch
+}) {
   const response = await fetchImpl(
     `/v1/employees/${encodeURIComponent(employeeId)}/work`,
     { headers: createHeaders(jwt) }
@@ -111,10 +116,13 @@ export async function submitEmployeeWork({
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let done = false;
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
+    while (!done) {
+      const result = await reader.read();
+      done = result.done;
+      const { value } = result;
       buffer += decoder.decode(value, { stream: !done });
 
       const blocks = buffer.split(/\r?\n\r?\n/);

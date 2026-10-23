@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createElement, useEffect, useMemo, useRef, useState } from 'react';
 import { createExperienceSdk } from '@olympion/experience-sdk';
+import EmployeeDetailPage from './employees/page.js';
 import {
   canAssignWork,
   clearStoredJwt,
@@ -21,6 +22,7 @@ export default function WorkforceConsolePage() {
   const streamIntervalRef = useRef(null);
   const authIntervalRef = useRef(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isEmployeeDetailRoute, setIsEmployeeDetailRoute] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [apiKeySuffix, setApiKeySuffix] = useState('');
   const [authError, setAuthError] = useState('');
@@ -187,7 +189,16 @@ export default function WorkforceConsolePage() {
   );
 
   useEffect(() => {
+    setIsEmployeeDetailRoute(
+      globalThis.window.location.pathname.startsWith('/employees/')
+    );
+  }, []);
+
+  useEffect(() => {
     if (!globalThis.window) {
+      return;
+    }
+    if (globalThis.window.location.pathname.startsWith('/employees/')) {
       return;
     }
 
@@ -332,6 +343,10 @@ export default function WorkforceConsolePage() {
     setIsConnected(false);
     setLoginRedirectToCurrentUrl();
   };
+
+  if (isEmployeeDetailRoute) {
+    return createElement(EmployeeDetailPage);
+  }
 
   if (!isAuthReady) {
     return (

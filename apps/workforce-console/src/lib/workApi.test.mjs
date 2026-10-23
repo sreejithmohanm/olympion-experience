@@ -23,7 +23,10 @@ test('fetchEmployeeWork requests authenticated history for the encoded employee'
   });
 
   assert.equal(request.url, '/v1/employees/employee%2F1/work');
-  assert.equal(request.options.headers.Authorization, 'Bearer ' + 'session-token');
+  assert.equal(
+    request.options.headers.Authorization,
+    'Bearer ' + 'session-token'
+  );
   assert.deepEqual(result, items);
 });
 
@@ -32,9 +35,11 @@ test('submitEmployeeWork posts a prompt and dispatches SSE events across chunk b
   const events = [];
   const encoder = new TextEncoder();
   const chunks = [
-    'event: token\r\ndata: {"text":"Hello"}\r\n\r\n',
+    'event: token\r\ndata: {"text":',
+    '"Hello"}\r\n\r\n',
     'event: tool_call\ndata: {"name":"search","input":{"q":"Olympion"}}\n\n',
-    'event: token\ndata: world\n\n'
+    'event: token\ndata: world\n\n',
+    'data: [DONE]\n\n'
   ];
 
   await submitEmployeeWork({
@@ -60,7 +65,10 @@ test('submitEmployeeWork posts a prompt and dispatches SSE events across chunk b
 
   assert.equal(request.url, '/v1/employees/employee%2F1/work');
   assert.equal(request.options.method, 'POST');
-  assert.equal(request.options.headers.Authorization, 'Bearer ' + 'session-token');
+  assert.equal(
+    request.options.headers.Authorization,
+    'Bearer ' + 'session-token'
+  );
   assert.equal(request.options.headers.Accept, 'text/event-stream');
   assert.deepEqual(JSON.parse(request.options.body), { prompt: 'Say hello' });
   assert.deepEqual(events, [
@@ -91,7 +99,10 @@ test('work requests surface API errors', async () => {
       prompt: 'Do work',
       onEvent() {},
       fetchImpl: async () =>
-        response({ message: 'Employee is unavailable' }, { ok: false, status: 409 })
+        response(
+          { message: 'Employee is unavailable' },
+          { ok: false, status: 409 }
+        )
     }),
     /Employee is unavailable/
   );
