@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { createCustomerAuth } from '../lib/customerAuth.mjs';
 import {
+  fetchHiredEmployees,
   fetchMarketplaceEmployees,
   hireMarketplaceEmployee,
   marketplaceApiUrl
@@ -28,6 +29,8 @@ type Employee = {
   availability?: string;
   availability_status?: string;
   status?: string;
+  templateId?: string;
+  template_id?: string;
 };
 
 function employeeId(employee: Employee) {
@@ -61,23 +64,24 @@ function isAvailable(employee: Employee) {
   if (typeof employee.is_available === 'boolean') {
     return employee.is_available;
   }
-  return (
-    String(
-      employee.available ??
-        employee.availability ??
-        employee.availability_status ??
-        employee.status ??
-        ''
-    ).toLowerCase() === 'available'
-  );
+  const status = String(
+    employee.available ??
+      employee.availability ??
+      employee.availability_status ??
+      employee.status ??
+      ''
+  ).toLowerCase();
+  return !status || status === 'available' || status === 'published';
 }
 
 function EmployeeCard({
   employee,
   onHire,
-  hiringId
+  hiringId,
+  alreadyHired
 }: {
   employee: Employee;
+  alreadyHired: boolean;
   onHire: (employee: Employee) => void;
   hiringId: string;
 }) {
@@ -88,6 +92,11 @@ function EmployeeCard({
     <article className="flex flex-col border border-black/10 bg-white p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
+          {alreadyHired ? (
+            <span className="mr-1 inline-block rounded-sm bg-[#f6cf42] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+              Hired
+            </span>
+          ) : null}
           {employee.seniority ? (
             <span className="inline-block rounded-sm bg-[#e8f0e8] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3b764a]">
               {employee.seniority}
@@ -162,6 +171,10 @@ export default function MarketplaceExperience() {
   const [hiringId, setHiringId] = useState('');
   const [live, setLive] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [signedIn, setSignedIn] = useState(false);
+  const [hired, setHired] = useState<Employee[]>([]);
+  const [token, setToken] = useState('');
+  const [hiredError, setHiredError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -171,7 +184,8 @@ export default function MarketplaceExperience() {
       skill: skill.trim(),
       availability,
       page,
-      pageSize
+      pageSize,
+      jwt: token
     })
       .then((result) => {
         if (active) {
@@ -200,11 +214,46 @@ export default function MarketplaceExperience() {
     return () => {
       active = false;
     };
-  }, [availability, page, pageSize, refreshKey, role, search, skill]);
+  }, [availability, page, pageSize, refreshKey, role, search, skill, token]);
 
   useEffect(() => {
     refreshRef.current = () => setRefreshKey((current) => current + 1);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadHired() {
+      try {
+        const session = await createCustomerAuth().refreshSession();
+        if (!active) {
+          return;
+        }
+        setSignedIn(Boolean(session));
+        setToken(session?.accessToken ?? '');
+        if (!session) {
+          setHired([]);
+          return;
+        }
+        const result = await fetchHiredEmployees({ jwt: session.accessToken });
+        if (active) {
+          setHired(result);
+          setHiredError('');
+        }
+      } catch (requestError) {
+        if (active) {
+          setHiredError(
+            requestError instanceof Error
+              ? requestError.message
+              : 'Unable to load your hired employees.'
+          );
+        }
+      }
+    }
+    void loadHired();
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
 
   useEffect(() => {
     let stopped = false;
@@ -305,6 +354,12 @@ export default function MarketplaceExperience() {
     }
   }
 
+  const hiredTemplateIds = new Set(
+    hired
+      .map((employee) => employee.templateId ?? employee.template_id ?? '')
+      .filter(Boolean)
+  );
+
   const pageCount =
     total === null
       ? page + Number(hasMore)
@@ -353,7 +408,7 @@ export default function MarketplaceExperience() {
             </Link>
             <Link href="/pricing">Pricing</Link>
             <Link href="/about">Company</Link>
-            <Link href="/login">Sign in</Link>
+            {signedIn ? null : <Link href="/login">Sign in</Link>}
             <Link className="md:hidden" href="/account/employees">
               My employees
             </Link>
@@ -387,6 +442,63 @@ export default function MarketplaceExperience() {
           </p>
         </div>
       </section>
+
+      {signedIn ? (
+        <section
+          aria-label="Your hired employees"
+          className="mx-auto max-w-5xl px-6 pt-8"
+        >
+          <h2 className="text-xl font-medium tracking-tight">
+            Your hired employees
+          </h2>
+          {hiredError ? (
+            <p className="mt-3 text-sm text-red-800" role="alert">
+              {hiredError}
+            </p>
+          ) : hired.length === 0 ? (
+            <p className="mt-3 text-sm text-black/60">
+              Your organisation has not hired anyone yet.
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {hired.map((employee, index) => (
+                <article
+                  className="border border-black/10 bg-white p-5"
+                  key={employeeId(employee) || index}
+                >
+                  <h3 className="text-base font-semibold leading-tight">
+                    {employeeName(employee)}
+                  </h3>
+                  <p className="mt-1 text-sm text-black/60">
+                    {employee.role ?? employee.title ?? 'Professional'}
+                  </p>
+                  {employeeSkills(employee).length ? (
+                    <ul
+                      aria-label="Skills"
+                      className="mt-3 flex flex-wrap gap-1.5"
+                    >
+                      {employeeSkills(employee).map((skill) => (
+                        <li
+                          className="border border-black/10 px-2 py-0.5 text-[11px] text-black/60"
+                          key={skill}
+                        >
+                          {skill}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          )}
+          <Link
+            className="mt-4 inline-block text-xs font-medium underline underline-offset-4"
+            href="/account/employees"
+          >
+            Manage my employees
+          </Link>
+        </section>
+      ) : null}
 
       <section
         aria-label="Search and filter employees"
@@ -500,6 +612,7 @@ export default function MarketplaceExperience() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {employees.map((employee, index) => (
                 <EmployeeCard
+                  alreadyHired={hiredTemplateIds.has(employeeId(employee))}
                   employee={employee}
                   hiringId={hiringId}
                   key={employeeId(employee) || index}

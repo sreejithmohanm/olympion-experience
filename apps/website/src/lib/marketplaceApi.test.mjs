@@ -16,63 +16,53 @@ function response(body, { ok = true, status = 200 } = {}) {
   };
 }
 
-test('marketplace employee search sends filters and unwraps paginated results', async () => {
+test('marketplace lists catalog templates publicly and filters/paginates locally', async () => {
   let request;
-  const result = await fetchMarketplaceEmployees({
-    search: 'architect',
-    role: 'Engineering',
-    skill: 'TypeScript',
-    availability: 'available',
-    page: 2,
-    pageSize: 6,
-    fetchImpl: async (url, options) => {
-      request = { url, options };
-      return response({
-        data: { employees: [{ id: 'employee-1' }] },
-        pagination: { total: 13, page: 2, page_size: 6 }
-      });
-    }
-  });
+  const templates = [
+    {
+      id: 't1',
+      role: 'Engineering',
+      skills: ['TypeScript'],
+      name: 'Architect'
+    },
+    { id: 't2', role: 'Design', skills: ['Figma'], name: 'Designer' },
+    { id: 't3', role: 'Engineering', skills: ['Go'], status: 'retired' }
+  ];
+  const fetchImpl = async (url, options) => {
+    request = { url, options };
+    return response({ data: { templates } });
+  };
 
-  const url = new URL(request.url, 'https://example.test');
-  assert.equal(url.pathname, '/v1/marketplace/employees');
-  assert.equal(url.searchParams.get('search'), 'architect');
-  assert.equal(url.searchParams.get('role'), 'Engineering');
-  assert.equal(url.searchParams.get('skill'), 'TypeScript');
-  assert.equal(url.searchParams.get('availability'), 'available');
-  assert.equal(url.searchParams.get('page'), '2');
-  assert.equal(url.searchParams.get('page_size'), '6');
-  assert.equal(request.options.headers.Accept, 'application/json');
-  assert.deepEqual(result, {
-    employees: [{ id: 'employee-1' }],
-    total: 13,
-    hasMore: true,
-    page: 2,
-    pageSize: 6
-  });
-});
-
-test('marketplace employee lists without pagination metadata paginate locally', async () => {
-  const result = await fetchMarketplaceEmployees({
-    page: 2,
-    pageSize: 2,
-    fetchImpl: async () =>
-      response({
-        employees: [
-          { id: 'employee-1' },
-          { id: 'employee-2' },
-          { id: 'employee-3' }
-        ]
-      })
-  });
-
-  assert.deepEqual(result, {
-    employees: [{ id: 'employee-3' }],
+  const all = await fetchMarketplaceEmployees({ pageSize: 2, fetchImpl });
+  assert.equal(request.url, '/v1/catalog');
+  assert.deepEqual(request.options.headers, { Accept: 'application/json' });
+  assert.deepEqual(all, {
+    employees: templates.slice(0, 2),
     total: 3,
-    hasMore: false,
-    page: 2,
+    hasMore: true,
+    page: 1,
     pageSize: 2
   });
+
+  const filtered = await fetchMarketplaceEmployees({
+    role: 'engineering',
+    skill: 'type',
+    search: 'architect',
+    fetchImpl
+  });
+  assert.deepEqual(filtered.employees, [templates[0]]);
+});
+
+test('catalog requests are tenant-scoped only when a JWT is supplied', async () => {
+  const headers = [];
+  const fetchImpl = async (url, options) => {
+    headers.push(options.headers);
+    return response({ templates: [] });
+  };
+  await fetchMarketplaceEmployees({ fetchImpl });
+  await fetchMarketplaceEmployees({ jwt: 'customer-token', fetchImpl });
+  assert.equal(headers[0].Authorization, undefined);
+  assert.equal(headers[1].Authorization, 'Bearer customer-token');
 });
 
 test('hired employees and hire requests use customer authorization', async () => {
@@ -88,7 +78,7 @@ test('hired employees and hire requests use customer authorization', async () =>
   );
   await hireMarketplaceEmployee({
     jwt: 'customer-token',
-    employeeId: 'employee/1',
+    employeeId: 'template-1',
     fetchImpl
   });
 
@@ -97,27 +87,28 @@ test('hired employees and hire requests use customer authorization', async () =>
     requests[0].options.headers.Authorization,
     'Bearer ' + 'customer-token'
   );
-  assert.equal(requests[1].url, '/v1/marketplace/employees/employee%2F1/hire');
+  assert.equal(requests[1].url, '/v1/employees');
   assert.equal(requests[1].options.method, 'POST');
+  assert.deepEqual(JSON.parse(requests[1].options.body), {
+    templateId: 'template-1'
+  });
   assert.equal(
     requests[1].options.headers.Authorization,
     'Bearer ' + 'customer-token'
   );
 });
 
-test('marketplace employee details safely encode IDs and remain public', async () => {
-  let request;
-  const result = await fetchMarketplaceEmployee({
-    employeeId: 'employee/1',
-    fetchImpl: async (url, options) => {
-      request = { url, options };
-      return response({ data: { employee: { id: 'employee/1' } } });
-    }
-  });
-
-  assert.equal(request.url, '/v1/marketplace/employees/employee%2F1');
-  assert.deepEqual(request.options.headers, { Accept: 'application/json' });
-  assert.deepEqual(result, { id: 'employee/1' });
+test('marketplace template details are found in the public catalog', async () => {
+  const fetchImpl = async () =>
+    response({ templates: [{ id: 'a' }, { id: 'b' }] });
+  assert.deepEqual(
+    await fetchMarketplaceEmployee({ employeeId: 'b', fetchImpl }),
+    { id: 'b' }
+  );
+  assert.equal(
+    await fetchMarketplaceEmployee({ employeeId: 'z', fetchImpl }),
+    null
+  );
 });
 
 test('marketplace API errors retain their HTTP status and API base URL is normalized', async () => {
@@ -133,8 +124,5 @@ test('marketplace API errors retain their HTTP status and API base URL is normal
       error.message === 'Marketplace unavailable' && error.status === 503
   );
 
-  assert.equal(
-    marketplaceApiUrl('/v1/marketplace/employees'),
-    '/v1/marketplace/employees'
-  );
+  assert.equal(marketplaceApiUrl('/v1/catalog'), '/v1/catalog');
 });
