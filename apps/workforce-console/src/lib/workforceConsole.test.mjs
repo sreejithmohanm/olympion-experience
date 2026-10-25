@@ -11,6 +11,7 @@ import {
   getStoredJwt,
   hireEmployee,
   INVALID_API_KEY_ERROR_MESSAGE,
+  isWorkforceAdmin,
   isJwtExpired,
   SESSION_JWT_STORAGE_KEY,
   storeJwt,
@@ -161,6 +162,25 @@ test('decodeJwtPayload parses payload and isJwtExpired respects exp claim', () =
   assert.equal(isJwtExpired(activeJwt, Date.now()), false);
   assert.equal(isJwtExpired(expiredJwt, Date.now()), true);
   assert.equal(isJwtExpired('not-a-jwt', Date.now()), true);
+});
+
+test('isWorkforceAdmin only accepts the workforce admin role claim', () => {
+  const makeJwt = (payload) =>
+    `header.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.signature`;
+
+  assert.equal(
+    isWorkforceAdmin(makeJwt({ role: 'olympion-workforce-admin' })),
+    true
+  );
+  assert.equal(
+    isWorkforceAdmin(makeJwt({ roles: ['olympion-workforce-admin'] })),
+    true
+  );
+  assert.equal(
+    isWorkforceAdmin(makeJwt({ role: 'olympion-crm-admin' })),
+    false
+  );
+  assert.equal(isWorkforceAdmin('invalid'), false);
 });
 
 test('exchangeApiKeyForJwt uses SDK auth method and normalizes invalid key errors', async () => {

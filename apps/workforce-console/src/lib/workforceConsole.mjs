@@ -151,6 +151,16 @@ export function isJwtExpired(jwt, nowMs = Date.now()) {
   return payload.exp * 1000 <= nowMs;
 }
 
+export function isWorkforceAdmin(jwt) {
+  const payload = decodeJwtPayload(jwt);
+  const roles = [
+    payload?.role,
+    ...(Array.isArray(payload?.roles) ? payload.roles : [])
+  ];
+
+  return roles.includes('olympion-workforce-admin');
+}
+
 function getStorage(storage) {
   return storage ?? globalThis.sessionStorage;
 }
