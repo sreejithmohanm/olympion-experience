@@ -71,7 +71,10 @@ function createLiveAuthStub() {
     async exchangeApiKeyForJwt(apiKey) {
       let response;
       try {
-        response = await fetch('/v1/auth/token', {
+        const apiBaseUrl = (
+          process.env.NEXT_PUBLIC_WORKFORCE_OS_API_BASE_URL ?? ''
+        ).replace(/\/+$/, '');
+        response = await fetch(`${apiBaseUrl}/v1/auth/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ api_key: apiKey })

@@ -3,3 +3,5 @@ dist/
 coverage/
 .next/
 out/
+test-results/
+playwright-report/

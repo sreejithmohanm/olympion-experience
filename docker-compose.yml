@@ -14,6 +14,8 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.workforce-console
+      args:
+        NEXT_PUBLIC_WORKFORCE_OS_API_BASE_URL: ${NEXT_PUBLIC_WORKFORCE_OS_API_BASE_URL:-}
     ports:
       - '3001:80'
     networks:

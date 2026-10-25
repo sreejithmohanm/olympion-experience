@@ -175,6 +175,9 @@ export default function MarketplaceExperience() {
   const [hired, setHired] = useState<Employee[]>([]);
   const [token, setToken] = useState('');
   const [hiredError, setHiredError] = useState('');
+  const [streamAttempts, setStreamAttempts] = useState(0);
+  const [streamConnections, setStreamConnections] = useState(0);
+  const [streamErrors, setStreamErrors] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -260,7 +263,22 @@ export default function MarketplaceExperience() {
     let reconnectTimer: number | undefined;
     let retryDelay = 1000;
     let source: EventSource | undefined;
+    let connectionAttempts = 0;
+    let connections = 0;
+    let errors = 0;
     const update = () => refreshRef.current();
+    const reportMetric = (event: string) => {
+      globalThis.dispatchEvent(
+        new CustomEvent('olympion:marketplace-stream', {
+          detail: {
+            event,
+            connectionAttempts,
+            connections,
+            errors
+          }
+        })
+      );
+    };
     const eventNames = [
       'created',
       'updated',
@@ -283,12 +301,18 @@ export default function MarketplaceExperience() {
       if (stopped) {
         return;
       }
+      connectionAttempts += 1;
+      setStreamAttempts(connectionAttempts);
+      reportMetric('connecting');
       source = new EventSource(
         marketplaceApiUrl('/v1/marketplace/employees/events')
       );
       source.onopen = () => {
         connectedRef.current = true;
         setLive(true);
+        connections += 1;
+        setStreamConnections(connections);
+        reportMetric('connected');
         retryDelay = 1000;
       };
       source.onmessage = update;
@@ -296,6 +320,9 @@ export default function MarketplaceExperience() {
       source.onerror = () => {
         connectedRef.current = false;
         setLive(false);
+        errors += 1;
+        setStreamErrors(errors);
+        reportMetric('connection_error');
         source?.close();
         if (!stopped) {
           reconnectTimer = window.setTimeout(connect, retryDelay);
@@ -437,9 +464,15 @@ export default function MarketplaceExperience() {
               className={`mr-2 inline-block h-2 w-2 rounded-full ${live ? 'bg-[#4d815b]' : 'bg-black/25'}`}
             />
             {live
-              ? 'Live marketplace updates connected'
-              : 'Marketplace updates reconnecting'}
+              ? `Live marketplace updates connected · ${streamConnections} connections · ${streamErrors} errors`
+              : `Marketplace updates reconnecting · ${streamAttempts} attempts · ${streamErrors} errors`}
           </p>
+          {streamErrors > 0 && !live ? (
+            <p className="mt-2 text-sm text-red-800" role="alert">
+              Live marketplace updates are unavailable; reconnecting. Listings
+              may be out of date.
+            </p>
+          ) : null}
         </div>
       </section>
 
