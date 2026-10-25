@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createExperienceSdk } from '@olympion/experience-sdk';
+import { fetchEmployees } from '../lib/catalogApi.mjs';
 import {
   canAssignWork,
   clearStoredJwt,
@@ -211,6 +212,41 @@ export default function WorkforceConsolePage() {
     setIsConnected(true);
     setIsAuthReady(true);
   }, []);
+
+  // Load existing hired employees from the API whenever the session becomes active
+  // and poll every 10 s to pick up hires done in other tabs or after navigation.
+  useEffect(() => {
+    if (!isConnected) {
+      return;
+    }
+
+    const loadEmployees = () => {
+      const jwt = getStoredJwt();
+      if (!jwt || isJwtExpired(jwt)) {
+        return;
+      }
+      fetchEmployees({ jwt })
+        .then((result) => {
+          setHiredEmployees(
+            result
+              .filter((e) => e.status === 'active')
+              .map((e) => ({
+                id: e.id,
+                name: e.display_name || e.name || e.template_name || 'Digital Professional',
+                specialty: e.role || e.template_name || '',
+                status: 'idle'
+              }))
+          );
+        })
+        .catch(() => {
+          // Non-fatal: console still works without the employee list
+        });
+    };
+
+    loadEmployees();
+    const interval = setInterval(loadEmployees, 10_000);
+    return () => clearInterval(interval);
+  }, [isConnected]);
 
   useEffect(() => {
     if (!isConnected) {

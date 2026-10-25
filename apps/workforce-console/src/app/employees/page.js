@@ -71,7 +71,7 @@ export default function EmployeeDetailPage() {
   const [employee, setEmployee] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [terminatingEmployeeId, setTerminatingEmployeeId] = useState('');
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function EmployeeDetailPage() {
     }
 
     let isMounted = true;
-    const loadEmployees = () =>
+    const loadEmployees = (isFirst = false) =>
       fetchEmployees({ jwt })
         .then((result) => {
           if (isMounted) {
@@ -107,8 +107,8 @@ export default function EmployeeDetailPage() {
           }
         })
         .finally(() => {
-          if (isMounted) {
-            setIsLoading(false);
+          if (isMounted && isFirst) {
+            setIsInitialLoad(false);
           }
         });
 
@@ -126,12 +126,11 @@ export default function EmployeeDetailPage() {
         })
         .finally(() => {
           if (isMounted) {
-            setIsLoading(false);
+            setIsInitialLoad(false);
           }
         });
-    } else {
-      loadEmployees();
-      const refreshInterval = setInterval(loadEmployees, 10_000);
+      loadEmployees(true);
+      const refreshInterval = setInterval(() => loadEmployees(false), 10_000);
 
       return () => {
         isMounted = false;
@@ -190,9 +189,9 @@ export default function EmployeeDetailPage() {
           <h1>Employees</h1>
           <p className="muted">Your employees and their current status.</p>
         </section>
-        {isLoading ? <p role="status">Loading employees…</p> : null}
+        {isInitialLoad ? <p role="status">Loading employees…</p> : null}
         {error ? <p role="alert">{error}</p> : null}
-        {!isLoading && !error && employees.length === 0 ? (
+        {!isInitialLoad && !error && employees.length === 0 ? (
           <p className="muted">No employees found.</p>
         ) : null}
         {employees.map((item) => {
@@ -247,7 +246,7 @@ export default function EmployeeDetailPage() {
     <main>
       <section className="panel stack">
         <a href="/employees">← Back to employees</a>
-        {isLoading ? <p role="status">Loading employee…</p> : null}
+        {isInitialLoad ? <p role="status">Loading employee…</p> : null}
         {error ? <p role="alert">{error}</p> : null}
         {employee ? (
           <>

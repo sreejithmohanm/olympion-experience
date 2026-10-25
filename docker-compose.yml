@@ -5,6 +5,8 @@ services:
       dockerfile: docker/Dockerfile.website
     ports:
       - '3000:3000'
+    networks:
+      - workforce-os
 
   workforce-console:
     build:
@@ -12,3 +14,10 @@ services:
       dockerfile: docker/Dockerfile.workforce-console
     ports:
       - '3001:80'
+    networks:
+      - workforce-os
+
+networks:
+  workforce-os:
+    external: true
+    name: workforce-os
