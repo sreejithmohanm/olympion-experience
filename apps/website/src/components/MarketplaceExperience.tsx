@@ -29,6 +29,8 @@ type Employee = {
   availability?: string;
   availability_status?: string;
   status?: string;
+  templateId?: string;
+  template_id?: string;
 };
 
 function employeeId(employee: Employee) {
@@ -75,9 +77,11 @@ function isAvailable(employee: Employee) {
 function EmployeeCard({
   employee,
   onHire,
-  hiringId
+  hiringId,
+  alreadyHired
 }: {
   employee: Employee;
+  alreadyHired: boolean;
   onHire: (employee: Employee) => void;
   hiringId: string;
 }) {
@@ -88,6 +92,11 @@ function EmployeeCard({
     <article className="flex flex-col border border-black/10 bg-white p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
+          {alreadyHired ? (
+            <span className="mr-1 inline-block rounded-sm bg-[#f6cf42] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
+              Hired
+            </span>
+          ) : null}
           {employee.seniority ? (
             <span className="inline-block rounded-sm bg-[#e8f0e8] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#3b764a]">
               {employee.seniority}
@@ -164,6 +173,7 @@ export default function MarketplaceExperience() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [signedIn, setSignedIn] = useState(false);
   const [hired, setHired] = useState<Employee[]>([]);
+  const [token, setToken] = useState('');
   const [hiredError, setHiredError] = useState('');
 
   useEffect(() => {
@@ -174,7 +184,8 @@ export default function MarketplaceExperience() {
       skill: skill.trim(),
       availability,
       page,
-      pageSize
+      pageSize,
+      jwt: token
     })
       .then((result) => {
         if (active) {
@@ -203,7 +214,7 @@ export default function MarketplaceExperience() {
     return () => {
       active = false;
     };
-  }, [availability, page, pageSize, refreshKey, role, search, skill]);
+  }, [availability, page, pageSize, refreshKey, role, search, skill, token]);
 
   useEffect(() => {
     refreshRef.current = () => setRefreshKey((current) => current + 1);
@@ -218,6 +229,7 @@ export default function MarketplaceExperience() {
           return;
         }
         setSignedIn(Boolean(session));
+        setToken(session?.accessToken ?? '');
         if (!session) {
           setHired([]);
           return;
@@ -341,6 +353,12 @@ export default function MarketplaceExperience() {
       setHiringId('');
     }
   }
+
+  const hiredTemplateIds = new Set(
+    hired
+      .map((employee) => employee.templateId ?? employee.template_id ?? '')
+      .filter(Boolean)
+  );
 
   const pageCount =
     total === null
@@ -594,6 +612,7 @@ export default function MarketplaceExperience() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {employees.map((employee, index) => (
                 <EmployeeCard
+                  alreadyHired={hiredTemplateIds.has(employeeId(employee))}
                   employee={employee}
                   hiringId={hiringId}
                   key={employeeId(employee) || index}

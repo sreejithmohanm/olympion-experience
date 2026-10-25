@@ -78,9 +78,14 @@ function templateText(template) {
   return { skills, role: String(template?.role ?? template?.title ?? '') };
 }
 
-async function fetchCatalogTemplates(fetchImpl) {
+// Without a JWT the catalog is the generic template list; with a customer JWT
+// the request is tenant-scoped.
+async function fetchCatalogTemplates(fetchImpl, jwt) {
   const response = await fetchImpl(marketplaceApiUrl(CATALOG_PATH), {
-    headers: { Accept: 'application/json' }
+    headers: {
+      Accept: 'application/json',
+      ...(jwt ? { Authorization: 'Bearer ' + jwt } : {})
+    }
   });
   return getList(await readResponse(response), ['templates', 'items']);
 }
@@ -92,9 +97,10 @@ export async function fetchMarketplaceEmployees({
   availability = '',
   page = 1,
   pageSize = 12,
+  jwt = '',
   fetchImpl = fetch
 } = {}) {
-  const templates = await fetchCatalogTemplates(fetchImpl);
+  const templates = await fetchCatalogTemplates(fetchImpl, jwt);
   const needle = search.trim().toLowerCase();
   const roleNeedle = role.trim().toLowerCase();
   const skillNeedle = skill.trim().toLowerCase();
@@ -129,9 +135,10 @@ export async function fetchMarketplaceEmployees({
 
 export async function fetchMarketplaceEmployee({
   employeeId,
+  jwt = '',
   fetchImpl = fetch
 }) {
-  const templates = await fetchCatalogTemplates(fetchImpl);
+  const templates = await fetchCatalogTemplates(fetchImpl, jwt);
   return (
     templates.find((template) => templateId(template) === String(employeeId)) ??
     null

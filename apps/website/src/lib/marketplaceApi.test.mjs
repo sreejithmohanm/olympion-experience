@@ -53,6 +53,18 @@ test('marketplace lists catalog templates publicly and filters/paginates locally
   assert.deepEqual(filtered.employees, [templates[0]]);
 });
 
+test('catalog requests are tenant-scoped only when a JWT is supplied', async () => {
+  const headers = [];
+  const fetchImpl = async (url, options) => {
+    headers.push(options.headers);
+    return response({ templates: [] });
+  };
+  await fetchMarketplaceEmployees({ fetchImpl });
+  await fetchMarketplaceEmployees({ jwt: 'customer-token', fetchImpl });
+  assert.equal(headers[0].Authorization, undefined);
+  assert.equal(headers[1].Authorization, 'Bearer customer-token');
+});
+
 test('hired employees and hire requests use customer authorization', async () => {
   const requests = [];
   const fetchImpl = async (url, options) => {
