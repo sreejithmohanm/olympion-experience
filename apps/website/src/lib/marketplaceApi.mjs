@@ -49,9 +49,23 @@ function getPagination(body, employees, page, pageSize) {
   const meta = body?.pagination ?? body?.meta ?? body?.data?.pagination ?? {};
   const total =
     meta.total ?? meta.total_count ?? body?.total ?? body?.data?.total;
+  const hasTotal =
+    total !== undefined && total !== null && Number.isFinite(Number(total));
+  if (!hasTotal && employees.length > pageSize) {
+    return {
+      employees: employees.slice((page - 1) * pageSize, page * pageSize),
+      total: employees.length,
+      hasMore: false,
+      page,
+      pageSize
+    };
+  }
   return {
     employees,
-    total: Number.isFinite(Number(total)) ? Number(total) : employees.length,
+    total: hasTotal ? Number(total) : null,
+    hasMore: hasTotal
+      ? page * pageSize < Number(total)
+      : employees.length >= pageSize,
     page: Number(meta.page ?? body?.page ?? page) || page,
     pageSize: Number(meta.page_size ?? meta.pageSize ?? pageSize) || pageSize
   };
@@ -88,6 +102,20 @@ export async function fetchMarketplaceEmployees({
   const body = await readResponse(response);
   const employees = getList(body, ['employees', 'items', 'results']);
   return getPagination(body, employees, page, pageSize);
+}
+
+export async function fetchMarketplaceEmployee({
+  employeeId,
+  fetchImpl = fetch
+}) {
+  const response = await fetchImpl(
+    marketplaceApiUrl(
+      `/v1/marketplace/employees/${encodeURIComponent(employeeId)}`
+    ),
+    { headers: { Accept: 'application/json' } }
+  );
+  const body = await readResponse(response);
+  return body?.employee ?? body?.data?.employee ?? body?.data ?? body;
 }
 
 export async function fetchHiredEmployees({ jwt, fetchImpl = fetch }) {

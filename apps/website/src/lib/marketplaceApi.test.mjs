@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   fetchHiredEmployees,
+  fetchMarketplaceEmployee,
   fetchMarketplaceEmployees,
   hireMarketplaceEmployee,
   marketplaceApiUrl
@@ -45,8 +46,32 @@ test('marketplace employee search sends filters and unwraps paginated results', 
   assert.deepEqual(result, {
     employees: [{ id: 'employee-1' }],
     total: 13,
+    hasMore: true,
     page: 2,
     pageSize: 6
+  });
+});
+
+test('marketplace employee lists without pagination metadata paginate locally', async () => {
+  const result = await fetchMarketplaceEmployees({
+    page: 2,
+    pageSize: 2,
+    fetchImpl: async () =>
+      response({
+        employees: [
+          { id: 'employee-1' },
+          { id: 'employee-2' },
+          { id: 'employee-3' }
+        ]
+      })
+  });
+
+  assert.deepEqual(result, {
+    employees: [{ id: 'employee-3' }],
+    total: 3,
+    hasMore: false,
+    page: 2,
+    pageSize: 2
   });
 });
 
@@ -78,6 +103,21 @@ test('hired employees and hire requests use customer authorization', async () =>
     requests[1].options.headers.Authorization,
     'Bearer ' + 'customer-token'
   );
+});
+
+test('marketplace employee details safely encode IDs and remain public', async () => {
+  let request;
+  const result = await fetchMarketplaceEmployee({
+    employeeId: 'employee/1',
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return response({ data: { employee: { id: 'employee/1' } } });
+    }
+  });
+
+  assert.equal(request.url, '/v1/marketplace/employees/employee%2F1');
+  assert.deepEqual(request.options.headers, { Accept: 'application/json' });
+  assert.deepEqual(result, { id: 'employee/1' });
 });
 
 test('marketplace API errors retain their HTTP status and API base URL is normalized', async () => {
