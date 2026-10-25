@@ -188,6 +188,7 @@ export default function EmployeeDetailPage() {
         <section className="panel">
           <h1>Employees</h1>
           <p className="muted">Your employees and their current status.</p>
+          <a href="/admin/listings">Manage marketplace listings</a>
         </section>
         {isInitialLoad ? <p role="status">Loading employees…</p> : null}
         {error ? <p role="alert">{error}</p> : null}
