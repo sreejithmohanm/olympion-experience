@@ -45,30 +45,44 @@ function getList(body, keys) {
   return [];
 }
 
-function getPagination(body, employees, page, pageSize) {
-  const meta = body?.pagination ?? body?.meta ?? body?.data?.pagination ?? {};
-  const total =
-    meta.total ?? meta.total_count ?? body?.total ?? body?.data?.total;
-  const hasTotal =
-    total !== undefined && total !== null && Number.isFinite(Number(total));
-  if (!hasTotal && employees.length > pageSize) {
-    return {
-      employees: employees.slice((page - 1) * pageSize, page * pageSize),
-      total: employees.length,
-      hasMore: false,
-      page,
-      pageSize
-    };
+const CATALOG_PATH = '/v1/catalog';
+
+function templateId(template) {
+  return String(
+    template?.id ?? template?.templateId ?? template?.template_id ?? ''
+  );
+}
+
+function templateAvailable(template) {
+  if (typeof template?.available === 'boolean') {
+    return template.available;
   }
-  return {
-    employees,
-    total: hasTotal ? Number(total) : null,
-    hasMore: hasTotal
-      ? page * pageSize < Number(total)
-      : employees.length >= pageSize,
-    page: Number(meta.page ?? body?.page ?? page) || page,
-    pageSize: Number(meta.page_size ?? meta.pageSize ?? pageSize) || pageSize
-  };
+  if (typeof template?.is_available === 'boolean') {
+    return template.is_available;
+  }
+  const status = String(
+    template?.availability ??
+      template?.availability_status ??
+      template?.status ??
+      ''
+  ).toLowerCase();
+  return !status || status === 'available' || status === 'published';
+}
+
+function templateText(template) {
+  const skills = Array.isArray(template?.skills)
+    ? template.skills.map((skill) =>
+        typeof skill === 'string' ? skill : (skill?.name ?? skill?.skill ?? '')
+      )
+    : [];
+  return { skills, role: String(template?.role ?? template?.title ?? '') };
+}
+
+async function fetchCatalogTemplates(fetchImpl) {
+  const response = await fetchImpl(marketplaceApiUrl(CATALOG_PATH), {
+    headers: { Accept: 'application/json' }
+  });
+  return getList(await readResponse(response), ['templates', 'items']);
 }
 
 export async function fetchMarketplaceEmployees({
@@ -80,42 +94,48 @@ export async function fetchMarketplaceEmployees({
   pageSize = 12,
   fetchImpl = fetch
 } = {}) {
-  const query = new URLSearchParams({
-    page: String(page),
-    page_size: String(pageSize)
-  });
-  for (const [key, value] of Object.entries({
-    search,
-    role,
-    skill,
-    availability
-  })) {
-    if (value) {
-      query.set(key, value);
+  const templates = await fetchCatalogTemplates(fetchImpl);
+  const needle = search.trim().toLowerCase();
+  const roleNeedle = role.trim().toLowerCase();
+  const skillNeedle = skill.trim().toLowerCase();
+  const filtered = templates.filter((template) => {
+    const { skills, role: templateRole } = templateText(template);
+    if (needle && !JSON.stringify(template).toLowerCase().includes(needle)) {
+      return false;
     }
-  }
+    if (roleNeedle && !templateRole.toLowerCase().includes(roleNeedle)) {
+      return false;
+    }
+    if (
+      skillNeedle &&
+      !skills.some((name) => name.toLowerCase().includes(skillNeedle))
+    ) {
+      return false;
+    }
+    if (availability) {
+      return templateAvailable(template) === (availability === 'available');
+    }
+    return true;
+  });
 
-  const response = await fetchImpl(
-    marketplaceApiUrl(`/v1/marketplace/employees?${query.toString()}`),
-    { headers: { Accept: 'application/json' } }
-  );
-  const body = await readResponse(response);
-  const employees = getList(body, ['employees', 'items', 'results']);
-  return getPagination(body, employees, page, pageSize);
+  return {
+    employees: filtered.slice((page - 1) * pageSize, page * pageSize),
+    total: filtered.length,
+    hasMore: page * pageSize < filtered.length,
+    page,
+    pageSize
+  };
 }
 
 export async function fetchMarketplaceEmployee({
   employeeId,
   fetchImpl = fetch
 }) {
-  const response = await fetchImpl(
-    marketplaceApiUrl(
-      `/v1/marketplace/employees/${encodeURIComponent(employeeId)}`
-    ),
-    { headers: { Accept: 'application/json' } }
+  const templates = await fetchCatalogTemplates(fetchImpl);
+  return (
+    templates.find((template) => templateId(template) === String(employeeId)) ??
+    null
   );
-  const body = await readResponse(response);
-  return body?.employee ?? body?.data?.employee ?? body?.data ?? body;
 }
 
 export async function fetchHiredEmployees({ jwt, fetchImpl = fetch }) {
@@ -133,17 +153,14 @@ export async function hireMarketplaceEmployee({
   employeeId,
   fetchImpl = fetch
 }) {
-  const response = await fetchImpl(
-    marketplaceApiUrl(
-      `/v1/marketplace/employees/${encodeURIComponent(employeeId)}/hire`
-    ),
-    {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        Authorization: 'Bearer ' + jwt
-      }
-    }
-  );
+  const response = await fetchImpl(marketplaceApiUrl('/v1/employees'), {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + jwt
+    },
+    body: JSON.stringify({ templateId: employeeId })
+  });
   return (await readResponse(response)) ?? {};
 }

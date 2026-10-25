@@ -47,15 +47,14 @@ function isAvailable(employee: Employee) {
   if (typeof employee.is_available === 'boolean') {
     return employee.is_available;
   }
-  return (
-    String(
-      employee.available ??
-        employee.availability ??
-        employee.availability_status ??
-        employee.status ??
-        ''
-    ).toLowerCase() === 'available'
-  );
+  const status = String(
+    employee.available ??
+      employee.availability ??
+      employee.availability_status ??
+      employee.status ??
+      ''
+  ).toLowerCase();
+  return !status || status === 'available' || status === 'published';
 }
 
 export default function MarketplaceEmployeeDetails() {
