@@ -57,9 +57,10 @@ test('hired employees and hire requests use customer authorization', async () =>
     return response({ data: { employees: [{ id: 'employee/1' }] } });
   };
 
-  assert.deepEqual(await fetchHiredEmployees({ jwt: 'customer-token', fetchImpl }), [
-    { id: 'employee/1' }
-  ]);
+  assert.deepEqual(
+    await fetchHiredEmployees({ jwt: 'customer-token', fetchImpl }),
+    [{ id: 'employee/1' }]
+  );
   await hireMarketplaceEmployee({
     jwt: 'customer-token',
     employeeId: 'employee/1',
@@ -71,10 +72,7 @@ test('hired employees and hire requests use customer authorization', async () =>
     requests[0].options.headers.Authorization,
     'Bearer ' + 'customer-token'
   );
-  assert.equal(
-    requests[1].url,
-    '/v1/marketplace/employees/employee%2F1/hire'
-  );
+  assert.equal(requests[1].url, '/v1/marketplace/employees/employee%2F1/hire');
   assert.equal(requests[1].options.method, 'POST');
   assert.equal(
     requests[1].options.headers.Authorization,
@@ -91,7 +89,8 @@ test('marketplace API errors retain their HTTP status and API base URL is normal
           { ok: false, status: 503 }
         )
     }),
-    (error) => error.message === 'Marketplace unavailable' && error.status === 503
+    (error) =>
+      error.message === 'Marketplace unavailable' && error.status === 503
   );
 
   assert.equal(
