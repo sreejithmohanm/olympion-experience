@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { createCustomerAuth } from '../lib/customerAuth.mjs';
 import {
+  fetchHiredEmployees,
   fetchMarketplaceEmployees,
   hireMarketplaceEmployee,
   marketplaceApiUrl
@@ -162,6 +163,9 @@ export default function MarketplaceExperience() {
   const [hiringId, setHiringId] = useState('');
   const [live, setLive] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [signedIn, setSignedIn] = useState(false);
+  const [hired, setHired] = useState<Employee[]>([]);
+  const [hiredError, setHiredError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -205,6 +209,40 @@ export default function MarketplaceExperience() {
   useEffect(() => {
     refreshRef.current = () => setRefreshKey((current) => current + 1);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function loadHired() {
+      try {
+        const session = await createCustomerAuth().refreshSession();
+        if (!active) {
+          return;
+        }
+        setSignedIn(Boolean(session));
+        if (!session) {
+          setHired([]);
+          return;
+        }
+        const result = await fetchHiredEmployees({ jwt: session.accessToken });
+        if (active) {
+          setHired(result);
+          setHiredError('');
+        }
+      } catch (requestError) {
+        if (active) {
+          setHiredError(
+            requestError instanceof Error
+              ? requestError.message
+              : 'Unable to load your hired employees.'
+          );
+        }
+      }
+    }
+    void loadHired();
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
 
   useEffect(() => {
     let stopped = false;
@@ -353,7 +391,7 @@ export default function MarketplaceExperience() {
             </Link>
             <Link href="/pricing">Pricing</Link>
             <Link href="/about">Company</Link>
-            <Link href="/login">Sign in</Link>
+            {signedIn ? null : <Link href="/login">Sign in</Link>}
             <Link className="md:hidden" href="/account/employees">
               My employees
             </Link>
@@ -387,6 +425,63 @@ export default function MarketplaceExperience() {
           </p>
         </div>
       </section>
+
+      {signedIn ? (
+        <section
+          aria-label="Your hired employees"
+          className="mx-auto max-w-5xl px-6 pt-8"
+        >
+          <h2 className="text-xl font-medium tracking-tight">
+            Your hired employees
+          </h2>
+          {hiredError ? (
+            <p className="mt-3 text-sm text-red-800" role="alert">
+              {hiredError}
+            </p>
+          ) : hired.length === 0 ? (
+            <p className="mt-3 text-sm text-black/60">
+              Your organisation has not hired anyone yet.
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {hired.map((employee, index) => (
+                <article
+                  className="border border-black/10 bg-white p-5"
+                  key={employeeId(employee) || index}
+                >
+                  <h3 className="text-base font-semibold leading-tight">
+                    {employeeName(employee)}
+                  </h3>
+                  <p className="mt-1 text-sm text-black/60">
+                    {employee.role ?? employee.title ?? 'Professional'}
+                  </p>
+                  {employeeSkills(employee).length ? (
+                    <ul
+                      aria-label="Skills"
+                      className="mt-3 flex flex-wrap gap-1.5"
+                    >
+                      {employeeSkills(employee).map((skill) => (
+                        <li
+                          className="border border-black/10 px-2 py-0.5 text-[11px] text-black/60"
+                          key={skill}
+                        >
+                          {skill}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          )}
+          <Link
+            className="mt-4 inline-block text-xs font-medium underline underline-offset-4"
+            href="/account/employees"
+          >
+            Manage my employees
+          </Link>
+        </section>
+      ) : null}
 
       <section
         aria-label="Search and filter employees"
