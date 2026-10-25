@@ -232,7 +232,11 @@ export default function WorkforceConsolePage() {
               .filter((e) => e.status === 'active')
               .map((e) => ({
                 id: e.id,
-                name: e.display_name || e.name || e.template_name || 'Digital Professional',
+                name:
+                  e.display_name ||
+                  e.name ||
+                  e.template_name ||
+                  'Digital Professional',
                 specialty: e.role || e.template_name || '',
                 status: 'idle'
               }))

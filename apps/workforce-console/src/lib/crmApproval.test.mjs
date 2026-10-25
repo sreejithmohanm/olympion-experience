@@ -19,10 +19,12 @@ test('registration is pending and does not create a tenant or JWT', () => {
   const { store, registration } = setup();
   assert.equal(registration.status, 'pending');
   assert.equal(store.listRegistrations(admin, 'pending').length, 1);
-  assert.throws(() => store.registerCustomer({
-    companyName: 'Acme',
-    contactEmail: 'boss@acme.com'
-  }));
+  assert.throws(() =>
+    store.registerCustomer({
+      companyName: 'Acme',
+      contactEmail: 'boss@acme.com'
+    })
+  );
 });
 
 test('only CRM admin can approve', () => {

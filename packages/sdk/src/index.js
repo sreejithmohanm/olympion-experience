@@ -48,7 +48,9 @@ function createDevAuthStub() {
   return {
     exchangeApiKeyForJwt(apiKey) {
       if (apiKey !== DEV_API_KEY) {
-        const error = new Error('Invalid API key. Please check your key and try again.');
+        const error = new Error(
+          'Invalid API key. Please check your key and try again.'
+        );
         error.status = 401;
         return Promise.reject(error);
       }
@@ -87,7 +89,9 @@ function createLiveAuthStub() {
 
       if (!response.ok) {
         const error = new Error(
-          body?.detail || body?.message || 'Invalid API key. Please check your key and try again.'
+          body?.detail ||
+            body?.message ||
+            'Invalid API key. Please check your key and try again.'
         );
         error.status = response.status;
         throw error;
@@ -114,7 +118,8 @@ function createExperienceSdk(config = {}) {
     // at build time. At runtime in the browser, /v1/auth/* is proxied to the
     // identity service, so we use the live fetch-based stub.
     const isDevMode =
-      typeof process !== 'undefined' && process.env.OLYMPION_DEV_MODE === 'true';
+      typeof process !== 'undefined' &&
+      process.env.OLYMPION_DEV_MODE === 'true';
     const authStub = isDevMode ? createDevAuthStub() : createLiveAuthStub();
 
     return new Proxy(
