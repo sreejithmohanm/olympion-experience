@@ -21,6 +21,10 @@ Open the applications at:
 
 The website runs as a Next.js standalone server. The workforce console is built as a static export and served by Nginx.
 
+Set `NEXT_PUBLIC_WORKFORCE_OS_API_BASE_URL` when building the website image to
+point customer authentication at the Workforce OS API. If it is unset, the
+website sends authentication requests to the same origin under `/v1/auth`.
+
 Useful commands:
 
 ```bash

@@ -2,7 +2,10 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { createCustomerAuth } from '../lib/customerAuth.mjs';
+import {
+  createCustomerAuth,
+  CUSTOMER_SESSION_STORAGE_KEY
+} from '../lib/customerAuth.mjs';
 
 export default function MarketplaceAuthGuard({
   children
@@ -20,7 +23,7 @@ export default function MarketplaceAuthGuard({
 
     async function checkSession() {
       const hadSession = Boolean(
-        window.sessionStorage.getItem('olympion.customer.session')
+        window.sessionStorage.getItem(CUSTOMER_SESSION_STORAGE_KEY)
       );
       try {
         const session = await auth.refreshSession();
@@ -45,7 +48,8 @@ export default function MarketplaceAuthGuard({
           setAuthenticated(false);
           router.replace(
             `/login?${new URLSearchParams({
-              next: pathname || '/marketplace'
+              next: pathname || '/marketplace',
+              expired: '1'
             }).toString()}`
           );
         }

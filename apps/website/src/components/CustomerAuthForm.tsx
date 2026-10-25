@@ -1,8 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
-import { createCustomerAuth, SESSION_EXPIRED_MESSAGE } from '../lib/customerAuth.mjs';
+import {
+  createCustomerAuth,
+  SESSION_EXPIRED_MESSAGE
+} from '../lib/customerAuth.mjs';
 
 export default function CustomerAuthForm({
   mode,
@@ -12,9 +16,8 @@ export default function CustomerAuthForm({
   expired?: boolean;
 }) {
   const isSignup = mode === 'signup';
-  const [error, setError] = useState(
-    expired ? SESSION_EXPIRED_MESSAGE : ''
-  );
+  const router = useRouter();
+  const [error, setError] = useState(expired ? SESSION_EXPIRED_MESSAGE : '');
   const [pending, setPending] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -41,19 +44,27 @@ export default function CustomerAuthForm({
         });
         const params = new URLSearchParams(window.location.search);
         const destination = params.get('next');
-        const safeDestination =
-          destination?.startsWith('/') && !destination.startsWith('//')
-            ? destination
-            : '/marketplace';
-        window.location.assign(safeDestination);
+        let safeDestination = '/marketplace';
+        if (destination?.startsWith('/') && !destination.startsWith('//')) {
+          try {
+            const target = new URL(destination, window.location.origin);
+            if (target.origin === window.location.origin) {
+              safeDestination = `${target.pathname}${target.search}${target.hash}`;
+            }
+          } catch {
+            safeDestination = '/marketplace';
+          }
+        }
+        router.replace(safeDestination);
       }
     } catch (requestError) {
       const message =
-        requestError instanceof Error ? requestError.message : 'Please try again.';
+        requestError instanceof Error
+          ? requestError.message
+          : 'Please try again.';
       const status = (requestError as { status?: number } | null)?.status;
       setError(
-        !isSignup &&
-          (status === 403 || /pending|approval/i.test(message))
+        !isSignup && (status === 403 || /pending|approval/i.test(message))
           ? 'Your account is awaiting approval by an Olympion CRM administrator.'
           : message
       );

@@ -15,8 +15,7 @@ function createStorage() {
 }
 
 function makeJwt(payload) {
-  const encoded = Buffer.from(JSON.stringify(payload))
-    .toString('base64url');
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
   return `header.${encoded}.signature`;
 }
 
@@ -47,7 +46,10 @@ test('customer registration submits a request for CRM approval', async () => {
   });
 
   assert.deepEqual(response, { status: 'pending_approval' });
-  assert.equal(calls[0].url, 'https://api.example.test/v1/auth/customer/register');
+  assert.equal(
+    calls[0].url,
+    'https://api.example.test/v1/auth/customer/register'
+  );
   assert.deepEqual(JSON.parse(calls[0].options.body), {
     full_name: 'Alex Customer',
     company_name: 'Acme',
