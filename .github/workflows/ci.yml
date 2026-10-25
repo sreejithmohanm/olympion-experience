@@ -22,3 +22,32 @@ jobs:
         working-directory: apps/workforce-console
       - name: Build
         run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install website dependencies
+        run: npm ci --workspaces=false
+        working-directory: apps/website
+      - name: Install workforce-console dependencies
+        run: npm ci --workspaces=false
+        working-directory: apps/workforce-console
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/website
+      - name: Run marketplace end-to-end test
+        run: npm run test:e2e
+        working-directory: apps/website
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/website/playwright-report/
+          if-no-files-found: ignore

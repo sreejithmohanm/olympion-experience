@@ -1,3 +1,5 @@
+import { workforceApiUrl } from './workforceApi.mjs';
+
 async function readResponse(response) {
   let body;
 
@@ -51,7 +53,7 @@ function createHeaders(jwt) {
 
 export async function fetchCatalog({ jwt, fetchImpl = fetch }) {
   const body = await readResponse(
-    await fetchImpl('/v1/catalog', {
+    await fetchImpl(workforceApiUrl('/v1/catalog'), {
       headers: createHeaders(jwt)
     })
   );
@@ -61,7 +63,7 @@ export async function fetchCatalog({ jwt, fetchImpl = fetch }) {
 
 export async function fetchEmployees({ jwt, fetchImpl = fetch }) {
   const body = await readResponse(
-    await fetchImpl('/v1/employees', {
+    await fetchImpl(workforceApiUrl('/v1/employees'), {
       headers: createHeaders(jwt)
     })
   );
@@ -79,7 +81,7 @@ export async function createEmployee({
     templateId,
     ...(displayName?.trim() ? { displayName: displayName.trim() } : {})
   };
-  const response = await fetchImpl('/v1/employees', {
+  const response = await fetchImpl(workforceApiUrl('/v1/employees'), {
     method: 'POST',
     headers: {
       ...createHeaders(jwt),
@@ -102,9 +104,12 @@ export async function createEmployee({
 
 export async function fetchEmployee({ jwt, employeeId, fetchImpl = fetch }) {
   const body = await readResponse(
-    await fetchImpl(`/v1/employees/${encodeURIComponent(employeeId)}`, {
-      headers: createHeaders(jwt)
-    })
+    await fetchImpl(
+      workforceApiUrl(`/v1/employees/${encodeURIComponent(employeeId)}`),
+      {
+        headers: createHeaders(jwt)
+      }
+    )
   );
 
   return getEmployee(body);
@@ -116,9 +121,12 @@ export async function terminateEmployee({
   fetchImpl = fetch
 }) {
   await readResponse(
-    await fetchImpl(`/v1/employees/${encodeURIComponent(employeeId)}`, {
-      method: 'DELETE',
-      headers: createHeaders(jwt)
-    })
+    await fetchImpl(
+      workforceApiUrl(`/v1/employees/${encodeURIComponent(employeeId)}`),
+      {
+        method: 'DELETE',
+        headers: createHeaders(jwt)
+      }
+    )
   );
 }

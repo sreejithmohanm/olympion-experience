@@ -1,3 +1,5 @@
+import { workforceApiUrl } from './workforceApi.mjs';
+
 async function readResponse(response) {
   let body;
 
@@ -46,7 +48,7 @@ function createHeaders(jwt, hasBody = false) {
 }
 
 function listingUrl(listingId = '') {
-  const base = '/v1/admin/marketplace/listings';
+  const base = workforceApiUrl('/v1/admin/marketplace/listings');
   return listingId ? `${base}/${encodeURIComponent(listingId)}` : base;
 }
 

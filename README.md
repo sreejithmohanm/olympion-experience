@@ -21,9 +21,35 @@ Open the applications at:
 
 The website runs as a Next.js standalone server. The workforce console is built as a static export and served by Nginx.
 
-Set `NEXT_PUBLIC_WORKFORCE_OS_API_BASE_URL` when building the website image to
-point customer authentication at the Workforce OS API. If it is unset, the
-website sends authentication requests to the same origin under `/v1/auth`.
+Set `NEXT_PUBLIC_WORKFORCE_OS_API_BASE_URL` to the browser-accessible Workforce
+OS API origin when building either application. The same value configures the
+website and workforce console, including their marketplace SSE connections.
+The API must allow requests and event streams from both application origins.
+If unset, both applications use same-origin `/v1` routes, so the hosting origin
+must reverse-proxy those routes to Workforce OS.
+
+The browser dispatches `olympion:marketplace-stream` custom events with
+connection-attempt, connection, and error counters. Browser monitoring can
+subscribe to this event for stream metrics. Stream failures are also announced
+as accessible alerts while the clients retry and use periodic refreshes.
+
+## End-to-end tests
+
+Run the marketplace publish/unpublish flow test from the website workspace:
+
+```bash
+cd apps/website
+npm ci --workspaces=false
+cd ../workforce-console
+npm ci --workspaces=false
+cd ../website
+npx playwright install chromium
+npm run test:e2e
+```
+
+The test starts local website, workforce-console, and mock Workforce OS API
+servers. Production deployments should configure the same API base URL through
+`NEXT_PUBLIC_WORKFORCE_OS_API_BASE_URL` for both apps.
 
 Useful commands:
 

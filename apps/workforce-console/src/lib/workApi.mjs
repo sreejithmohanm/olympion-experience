@@ -1,3 +1,5 @@
+import { workforceApiUrl } from './workforceApi.mjs';
+
 function createHeaders(jwt) {
   return {
     Accept: 'application/json',
@@ -70,7 +72,7 @@ export async function fetchEmployeeWork({
   fetchImpl = fetch
 }) {
   const response = await fetchImpl(
-    `/v1/employees/${encodeURIComponent(employeeId)}/work`,
+    workforceApiUrl(`/v1/employees/${encodeURIComponent(employeeId)}/work`),
     { headers: createHeaders(jwt) }
   );
 
@@ -90,7 +92,7 @@ export async function submitEmployeeWork({
   fetchImpl = fetch
 }) {
   const response = await fetchImpl(
-    `/v1/employees/${encodeURIComponent(employeeId)}/work`,
+    workforceApiUrl(`/v1/employees/${encodeURIComponent(employeeId)}/work`),
     {
       method: 'POST',
       headers: {

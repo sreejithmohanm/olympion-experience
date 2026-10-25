@@ -13,6 +13,7 @@ import {
   isJwtExpired,
   isWorkforceAdmin
 } from '../../../lib/workforceConsole.mjs';
+import { workforceApiUrl } from '../../../lib/workforceApi.mjs';
 
 function getListingId(listing) {
   return String(
@@ -88,6 +89,9 @@ export default function MarketplaceListingsAdminPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [isLive, setIsLive] = useState(false);
+  const [streamAttempts, setStreamAttempts] = useState(0);
+  const [streamConnections, setStreamConnections] = useState(0);
+  const [streamErrors, setStreamErrors] = useState(0);
   const selectedIdRef = useRef(selectedId);
 
   const selectedListing = listings.find(
@@ -123,6 +127,14 @@ export default function MarketplaceListingsAdminPage() {
 
     let active = true;
     let live = false;
+    const streamMetrics = { connectionAttempts: 0, connections: 0, errors: 0 };
+    const reportStreamMetric = (event) => {
+      globalThis.dispatchEvent(
+        new globalThis.CustomEvent('olympion:marketplace-stream', {
+          detail: { event, ...streamMetrics }
+        })
+      );
+    };
     const refresh = async () => {
       try {
         const result = await fetchMarketplaceListings({ jwt: getStoredJwt() });
@@ -170,8 +182,11 @@ export default function MarketplaceListingsAdminPage() {
       }
     };
 
+    streamMetrics.connectionAttempts += 1;
+    setStreamAttempts(streamMetrics.connectionAttempts);
+    reportStreamMetric('connecting');
     const source = new globalThis.EventSource(
-      '/v1/marketplace/employees/events'
+      workforceApiUrl('/v1/marketplace/employees/events')
     );
     const refreshEvents = [
       'created',
@@ -187,12 +202,20 @@ export default function MarketplaceListingsAdminPage() {
     ];
     source.onopen = () => {
       live = true;
+      streamMetrics.connections += 1;
+      setStreamConnections(streamMetrics.connections);
+      reportStreamMetric('connected');
       if (active) {
         setIsLive(true);
       }
     };
     source.onerror = () => {
       live = false;
+      streamMetrics.errors += 1;
+      streamMetrics.connectionAttempts += 1;
+      setStreamErrors(streamMetrics.errors);
+      setStreamAttempts(streamMetrics.connectionAttempts);
+      reportStreamMetric('connection_error');
       if (active) {
         setIsLive(false);
       }
@@ -343,9 +366,15 @@ export default function MarketplaceListingsAdminPage() {
         </p>
         <p aria-live="polite" className="muted">
           {isLive
-            ? 'Live marketplace updates connected'
-            : 'Marketplace updates reconnecting; checking periodically'}
+            ? `Live marketplace updates connected · ${streamConnections} connections · ${streamErrors} errors`
+            : `Marketplace updates reconnecting · ${streamAttempts} attempts · ${streamErrors} errors; checking periodically`}
         </p>
+        {streamErrors > 0 && !isLive ? (
+          <p role="alert">
+            Live marketplace updates are unavailable; reconnecting. Listing
+            status may be out of date.
+          </p>
+        ) : null}
       </section>
       {error ? <p role="alert">{error}</p> : null}
       <section className="grid two">
