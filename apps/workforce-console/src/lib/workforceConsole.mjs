@@ -161,6 +161,16 @@ export function isWorkforceAdmin(jwt) {
   return roles.includes('olympion-workforce-admin');
 }
 
+export function isCrmAdmin(jwt) {
+  const payload = decodeJwtPayload(jwt);
+  const roles = [
+    payload?.role,
+    ...(Array.isArray(payload?.roles) ? payload.roles : [])
+  ];
+
+  return roles.includes('olympion-crm-admin');
+}
+
 function getStorage(storage) {
   return storage ?? globalThis.sessionStorage;
 }

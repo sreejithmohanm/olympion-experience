@@ -1,70 +1,61 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CRM_ADMIN_ROLE, createCrmStore } from './crmApproval.mjs';
-import { decodeJwtPayload } from './workforceConsole.mjs';
+import {
+  approveContact,
+  fetchPendingContacts,
+  rejectContact
+} from './crmApproval.mjs';
 
-const admin = { id: 'admin-1', role: CRM_ADMIN_ROLE };
-
-function setup() {
-  const store = createCrmStore({ jwtSecret: 'secret' });
-  const registration = store.registerCustomer({
-    companyName: 'Acme',
-    contactEmail: 'Boss@Acme.com',
-    contactName: 'Boss'
-  });
-  return { store, registration };
+function mockFetch(body, { ok = true, status = 200 } = {}) {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    calls.push({ url, init });
+    return { ok, status, json: async () => body };
+  };
+  return { calls, fetchImpl };
 }
 
-test('registration is pending and does not create a tenant or JWT', () => {
-  const { store, registration } = setup();
-  assert.equal(registration.status, 'pending');
-  assert.equal(store.listRegistrations(admin, 'pending').length, 1);
-  assert.throws(() =>
-    store.registerCustomer({
-      companyName: 'Acme',
-      contactEmail: 'boss@acme.com'
-    })
-  );
+test('fetchPendingContacts requests pending contacts with the JWT', async () => {
+  const { calls, fetchImpl } = mockFetch({
+    contacts: [{ contact_id: 'c1', email: 'a@b.com' }]
+  });
+  const result = await fetchPendingContacts({ jwt: 'tok', fetchImpl });
+  assert.equal(result.length, 1);
+  assert.equal(calls[0].url, '/v1/auth/contacts?status=pending');
+  assert.equal(calls[0].init.headers.Authorization, 'Bearer tok');
 });
 
-test('only CRM admin can approve', () => {
-  const { store, registration } = setup();
-  assert.throws(
-    () => store.approveRegistration({ role: 'user' }, registration.id),
-    /CRM Admin/
-  );
-});
-
-test('approval creates tenant and JWT scoped to it', () => {
-  const { store, registration } = setup();
-  const result = store.approveRegistration(admin, registration.id);
-  const payload = decodeJwtPayload(result.jwt);
-
-  assert.equal(payload.tenantId, result.tenant.id);
-  assert.equal(payload.customerId, result.customer.id);
-  assert.equal(payload.email, 'boss@acme.com');
-  assert.throws(() => store.approveRegistration(admin, registration.id));
-});
-
-test('a customer can have multiple users each with their own JWT', () => {
-  const { store, registration } = setup();
-  const first = store.approveRegistration(admin, registration.id);
-  const second = store.addCustomerUser(admin, first.customer.id, {
-    email: 'dev@acme.com'
+test('approveContact and rejectContact PATCH the status endpoint', async () => {
+  const approve = mockFetch({ status: 'approved' });
+  await approveContact({
+    jwt: 'tok',
+    contactId: 'c/1',
+    fetchImpl: approve.fetchImpl
+  });
+  assert.equal(approve.calls[0].url, '/v1/auth/contacts/c%2F1/status');
+  assert.equal(approve.calls[0].init.method, 'PATCH');
+  assert.deepEqual(JSON.parse(approve.calls[0].init.body), {
+    status: 'approved'
   });
 
-  const a = decodeJwtPayload(first.jwt);
-  const b = decodeJwtPayload(second.jwt);
-  assert.notEqual(a.sub, b.sub);
-  assert.equal(a.tenantId, b.tenantId);
-  assert.throws(() =>
-    store.addCustomerUser(admin, first.customer.id, { email: 'DEV@acme.com' })
-  );
+  const reject = mockFetch({ status: 'rejected' });
+  await rejectContact({
+    jwt: 'tok',
+    contactId: 'c1',
+    fetchImpl: reject.fetchImpl
+  });
+  assert.deepEqual(JSON.parse(reject.calls[0].init.body), {
+    status: 'rejected'
+  });
 });
 
-test('rejected registration yields no tenant', () => {
-  const { store, registration } = setup();
-  const rejected = store.rejectRegistration(admin, registration.id, 'no');
-  assert.equal(rejected.status, 'rejected');
-  assert.throws(() => store.approveRegistration(admin, registration.id));
+test('errors surface the API message', async () => {
+  const { fetchImpl } = mockFetch(
+    { detail: 'Forbidden' },
+    { ok: false, status: 403 }
+  );
+  await assert.rejects(
+    fetchPendingContacts({ jwt: 'tok', fetchImpl }),
+    /Forbidden/
+  );
 });
